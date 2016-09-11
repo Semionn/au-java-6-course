@@ -6,7 +6,7 @@ import java.util.function.Supplier;
  * Created by semionn on 07.09.16.
  */
 public class MultiThreadLazy<T> implements Lazy<T> {
-    private volatile LazyResultWrapper<T> wrapper = new NoLazyResult<>();
+    private volatile T result = null;
     private Supplier<T> supplier;
     private volatile boolean computed = false;
 
@@ -19,16 +19,16 @@ public class MultiThreadLazy<T> implements Lazy<T> {
         if (!computed) {
             synchronized (this) {
                 if (!computed) {
-                    wrapper = new LazyResultWrapper<>(supplier.get());
+                    result = supplier.get();
                     computed = true;
                 }
             }
         }
-        return wrapper.getResult();
+        return result;
     }
 
-    public LazyResultWrapper<T> getWrapper() {
-        return wrapper;
+    public T getResult() {
+        return result;
     }
 
     public boolean isComputed() {
