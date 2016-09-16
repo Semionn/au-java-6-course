@@ -1,8 +1,6 @@
 package com.au.mit.lazy;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -10,8 +8,7 @@ import java.util.function.Supplier;
  */
 public class LockFreeLazy<T> implements Lazy<T> {
     private Supplier<T> supplier;
-    private volatile List<LazyResultWrapper<T>> results =
-            Collections.synchronizedList(new ArrayList<LazyResultWrapper<T>>());
+    private volatile AtomicReference<LazyResultWrapper<T>> wrapper = new AtomicReference<>();
 
     public LockFreeLazy(Supplier<T> supplier) {
         this.supplier = supplier;
@@ -19,9 +16,7 @@ public class LockFreeLazy<T> implements Lazy<T> {
 
     @Override
     public T get() {
-        if (results.size() == 0) {
-            results.add(new LazyResultWrapper<>(supplier.get()));
-        }
-        return results.get(0).getResult();
+        wrapper.compareAndSet(null, new LazyResultWrapper<>(supplier.get()));
+        return wrapper.get().getResult();
     }
 }
