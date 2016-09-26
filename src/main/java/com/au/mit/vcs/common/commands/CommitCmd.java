@@ -2,11 +2,9 @@ package com.au.mit.vcs.common.commands;
 
 import com.au.mit.vcs.common.Repository;
 import com.au.mit.vcs.common.exceptions.CommandBuildingException;
-import com.au.mit.vcs.common.exceptions.NotEnoughArgumentsException;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
