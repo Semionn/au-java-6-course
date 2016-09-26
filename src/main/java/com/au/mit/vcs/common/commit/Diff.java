@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 import static com.au.mit.vcs.common.Utility.calcFileSHA1;
+import static com.au.mit.vcs.common.Utility.calcSHA1;
 
 /**
  * Created by semionn on 23.09.16.
@@ -31,7 +32,7 @@ public class Diff implements java.io.Serializable {
     }
 
     public String calcHash() {
-        return calcFileSHA1(filePath);
+        return calcSHA1(calcFileSHA1(filePath) + calcSHA1(Long.toString(new java.util.Date().getTime())));
     }
 
     public void apply(Path commitPath) {

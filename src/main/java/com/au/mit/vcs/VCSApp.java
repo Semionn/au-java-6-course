@@ -4,6 +4,8 @@ import com.au.mit.vcs.common.Repository;
 import com.au.mit.vcs.common.commands.*;
 import com.au.mit.vcs.parser.VCSParser;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -13,7 +15,8 @@ import java.util.concurrent.Callable;
  */
 public class VCSApp {
     public static void main(String[] args) throws Exception {
-        Repository repository = Repository.deserialize();
+        Path storagePath = Paths.get(".vcs");
+        Repository repository = Repository.deserialize(storagePath);
         final List<Command> commands = Arrays.asList(
                 new AddCmd(),
                 new CommitCmd(),
@@ -23,6 +26,6 @@ public class VCSApp {
                 new LogCmd());
         final Callable<Void> task = new VCSParser(commands).parse(repository, args);
         task.call();
-        Repository.serialize(repository);
+        Repository.serialize(repository, storagePath);
     }
 }

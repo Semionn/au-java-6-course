@@ -21,8 +21,7 @@ import static com.au.mit.vcs.common.Utility.calcSHA1;
  * Created by semionn on 22.09.16.
  */
 public class Repository implements java.io.Serializable {
-    private final static Path STORAGE_PATH = Paths.get(".vcs");
-    private final static Path META_INFO_PATH = STORAGE_PATH.resolve("meta");
+    private final Path storagePath;
     private final static int HASH_LENGTH = 10;
     private final List<Diff> trackedDiffs;
     private final Map<String, Commit> commits;
@@ -30,8 +29,9 @@ public class Repository implements java.io.Serializable {
     private Branch currentBranch;
     private Commit head;
 
-    public Repository() {
+    public Repository(Path storagePath) {
         this.trackedDiffs = new ArrayList<>();
+        this.storagePath = storagePath;
         currentBranch = new Branch("master", null);
         head = new Commit("", "", currentBranch, head, trackedDiffs);
         commits = Arrays.asList(head).stream().collect(Collectors.toMap(Commit::getHash, Function.identity()));
@@ -40,12 +40,13 @@ public class Repository implements java.io.Serializable {
     }
 
     public Repository(Commit head, Branch currentBranch, Map<String, Branch> branches, Map<String, Commit> commits,
-                      List<Diff> trackedDiffs) {
+                      List<Diff> trackedDiffs, Path storagePath) {
         this.head = head;
         this.currentBranch = currentBranch;
         this.branches = branches;
         this.commits = commits;
         this.trackedDiffs = trackedDiffs;
+        this.storagePath = storagePath;
     }
 
     public void trackFile(String path) {
@@ -157,7 +158,7 @@ public class Repository implements java.io.Serializable {
         Commit oldCommit = head;
         while (oldCommit.getDepth() > updateCommit.getDepth()) {
             for (Diff diff : oldCommit.getDiffList()) {
-                diff.undo(STORAGE_PATH);
+                diff.undo(storagePath);
             }
             oldCommit = oldCommit.getPreviousCommit();
         }
@@ -169,7 +170,7 @@ public class Repository implements java.io.Serializable {
             }
             if (oldCommit.getDepth() == updateCommit.getDepth()) {
                 for (Diff diff : oldCommit.getDiffList()) {
-                    diff.undo(STORAGE_PATH);
+                    diff.undo(storagePath);
                 }
                 oldCommit = oldCommit.getPreviousCommit();
             }
@@ -246,11 +247,11 @@ public class Repository implements java.io.Serializable {
         }
     }
 
-    public static void serialize(Repository repository) {
+    public static void serialize(Repository repository, Path storagePath) {
         try {
-            new File(STORAGE_PATH.toString()).mkdir();
+            new File(storagePath.toString()).mkdir();
             FileOutputStream fileOut =
-                    new FileOutputStream(META_INFO_PATH.toString());
+                    new FileOutputStream(getMetaInfoPath(storagePath).toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
             out.writeObject(repository);
             out.close();
@@ -260,22 +261,26 @@ public class Repository implements java.io.Serializable {
         }
     }
 
-    public static Repository deserialize() {
+    public static Repository deserialize(Path storagePath) {
         Repository repository;
         try {
-            FileInputStream fileIn = new FileInputStream(META_INFO_PATH.toString());
+            FileInputStream fileIn = new FileInputStream(getMetaInfoPath(storagePath).toString());
             ObjectInputStream in = new ObjectInputStream(fileIn);
             repository = (Repository) in.readObject();
             in.close();
             fileIn.close();
         } catch (IOException | ClassNotFoundException e) {
-            return new Repository();
+            return new Repository(storagePath);
         }
         return repository;
     }
 
-    private static Path getCommitPath(String commitHash) {
-        return STORAGE_PATH.resolve(commitHash);
+    private static Path getMetaInfoPath(Path storagePath) {
+        return storagePath.resolve("meta");
+    }
+
+    private Path getCommitPath(String commitHash) {
+        return storagePath.resolve(commitHash);
     }
 
     private static String getCommitHash(String hash) {
