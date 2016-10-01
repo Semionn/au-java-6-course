@@ -26,8 +26,12 @@ public class BranchCmd extends Command {
         }
 
         return () -> {
-            if (commandArgs.getOptions().containsValue("delete"))
-            repository.makeBranch(args.get(0));
+            if (commandArgs.getOptions().containsValue("delete")) {
+                repository.removeBranch(args.get(0));
+
+            } else {
+                repository.makeBranch(args.get(0));
+            }
             return null;
         };
     }
