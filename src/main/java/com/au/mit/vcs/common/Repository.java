@@ -21,7 +21,7 @@ import static com.au.mit.vcs.common.Utility.calcSHA1;
  * Created by semionn on 22.09.16.
  */
 public class Repository implements java.io.Serializable {
-    private final Path storagePath;
+    private final String storagePath;
     private final static int HASH_LENGTH = 10;
     private final List<Diff> trackedDiffs;
     private final Map<String, Commit> commits;
@@ -31,7 +31,7 @@ public class Repository implements java.io.Serializable {
 
     public Repository(Path storagePath) {
         this.trackedDiffs = new ArrayList<>();
-        this.storagePath = storagePath;
+        this.storagePath = storagePath.toString();
         currentBranch = new Branch("master", null);
         head = new Commit("", "", currentBranch, head, trackedDiffs);
         commits = Arrays.asList(head).stream().collect(Collectors.toMap(Commit::getHash, Function.identity()));
@@ -46,7 +46,7 @@ public class Repository implements java.io.Serializable {
         this.branches = branches;
         this.commits = commits;
         this.trackedDiffs = trackedDiffs;
-        this.storagePath = storagePath;
+        this.storagePath = storagePath.toString();
     }
 
     public void trackFile(String path) {
@@ -163,7 +163,7 @@ public class Repository implements java.io.Serializable {
         Commit oldCommit = head;
         while (oldCommit.getDepth() > updateCommit.getDepth()) {
             for (Diff diff : oldCommit.getDiffList()) {
-                diff.undo(storagePath);
+                diff.undo(Paths.get(storagePath));
             }
             oldCommit = oldCommit.getPreviousCommit();
         }
@@ -175,7 +175,7 @@ public class Repository implements java.io.Serializable {
             }
             if (oldCommit.getDepth() == updateCommit.getDepth()) {
                 for (Diff diff : oldCommit.getDiffList()) {
-                    diff.undo(storagePath);
+                    diff.undo(Paths.get(storagePath));
                 }
                 oldCommit = oldCommit.getPreviousCommit();
             }
@@ -285,7 +285,7 @@ public class Repository implements java.io.Serializable {
     }
 
     private Path getCommitPath(String commitHash) {
-        return storagePath.resolve(commitHash);
+        return Paths.get(storagePath).resolve(commitHash);
     }
 
     private static String getCommitHash(String hash) {
