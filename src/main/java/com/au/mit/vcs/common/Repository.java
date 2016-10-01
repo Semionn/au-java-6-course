@@ -10,6 +10,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,10 +29,12 @@ public class Repository implements java.io.Serializable {
     private final Map<String, Branch> branches;
     private Branch currentBranch;
     private Commit head;
+    private Cache cache;
 
     public Repository(Path storagePath) {
         this.trackedDiffs = new ArrayList<>();
         this.storagePath = storagePath.toString();
+        cache = new Cache();
         currentBranch = new Branch("master", null);
         head = new Commit("", "", currentBranch, head, trackedDiffs);
         commits = Arrays.asList(head).stream().collect(Collectors.toMap(Commit::getHash, Function.identity()));
@@ -40,26 +43,23 @@ public class Repository implements java.io.Serializable {
     }
 
     public Repository(Commit head, Branch currentBranch, Map<String, Branch> branches, Map<String, Commit> commits,
-                      List<Diff> trackedDiffs, Path storagePath) {
+                      List<Diff> trackedDiffs, Path storagePath, Cache cache) {
         this.head = head;
         this.currentBranch = currentBranch;
         this.branches = branches;
         this.commits = commits;
         this.trackedDiffs = trackedDiffs;
         this.storagePath = storagePath.toString();
+        this.cache = cache;
     }
 
     public void trackFile(String path) {
-        if (!Files.exists(Paths.get(path))) {
-            throw new CommandExecutionException(String.format("File '%s' not found", path));
+        try {
+            cache.addFile(path);
+            trackedDiffs.add(new Diff(path, head));
+        } catch (IOException e) {
+            throw new CommandExecutionException(e);
         }
-
-        for (Diff diff : trackedDiffs) {
-            if (diff.getFilePath().equals(Paths.get(path))) {
-                return;
-            }
-        }
-        trackedDiffs.add(new Diff(path, head));
     }
 
     public void makeCommit(String message) {
@@ -76,16 +76,13 @@ public class Repository implements java.io.Serializable {
             final Path commitFolder = getCommitPath(commitHash);
             Files.createDirectories(commitFolder);
 
-            for (Diff diff : trackedDiffs) {
-                final Path pathToSave = commitFolder.resolve(diff.getFilePath());
-                new File(pathToSave.toString()).getParentFile().mkdirs();
-                Files.copy(diff.getFilePath(), pathToSave);
-            }
+            cache.moveToDir(commitFolder);
 
             head = new Commit(commitHash, message, currentBranch, head, trackedDiffs);
             commits.put(commitHash, head);
             currentBranch.setLastCommit(head);
             trackedDiffs.clear();
+            System.out.println("Committed successfully");
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }
@@ -244,6 +241,18 @@ public class Repository implements java.io.Serializable {
         makeCommit(String.format("Merged from '%s' to '%s'", branchName, currentBranch.getName()));
     }
 
+    public void resetFile(String filePath) {
+        try {
+            cache.resetFile(filePath);
+            trackedDiffs.stream()
+                    .filter(diff -> diff.getFilePath().toString().equals(filePath))
+                    .collect(Collectors.toList())
+                    .forEach(trackedDiffs::remove);
+        } catch (IOException e) {
+            throw new CommandExecutionException(e);
+        }
+    }
+
     public void printLog() {
         Commit currCommit = head;
         while (currCommit.getDepth() != 0) {
@@ -290,5 +299,46 @@ public class Repository implements java.io.Serializable {
 
     private static String getCommitHash(String hash) {
         return calcSHA1(hash).substring(0, HASH_LENGTH);
+    }
+
+    private class Cache implements java.io.Serializable {
+        private final String path = ".cache";
+        private final Set<String> files;
+
+        public Cache() {
+            files = new HashSet<>();
+        }
+
+        public Cache(Set<String> files) {
+            this.files = files;
+        }
+
+        public void addFile(String filePath) throws IOException {
+            if (!Files.exists(Paths.get(filePath))) {
+                throw new CommandExecutionException(String.format("File '%s' not found", path));
+            }
+            final Path pathToSave = getCachePath().resolve(filePath);
+            new File(pathToSave.toString()).getParentFile().mkdirs();
+            Files.copy(Paths.get(filePath), pathToSave, StandardCopyOption.REPLACE_EXISTING);
+            files.add(filePath);
+        }
+
+        public void moveToDir(Path dirPath) throws IOException {
+            for (String filePath : files) {
+                final Path pathToSave = dirPath.resolve(filePath);
+                new File(pathToSave.toString()).getParentFile().mkdirs();
+                Files.move(getCachePath().resolve(filePath), pathToSave);
+            }
+            files.clear();
+        }
+
+        public void resetFile(String filePath) throws IOException {
+            Files.deleteIfExists(getCachePath().resolve(filePath));
+            files.remove(filePath);
+        }
+
+        private Path getCachePath() {
+            return Paths.get(storagePath).resolve(path);
+        }
     }
 }

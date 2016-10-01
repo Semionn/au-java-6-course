@@ -29,7 +29,6 @@ public class RepositoryTest {
             Files.deleteIfExists(temp.toPath());
             FileUtils.deleteDirectory(new File(storagePath.toString()));
         }
-
     }
 
     @Test
@@ -106,6 +105,27 @@ public class RepositoryTest {
         } finally {
             Files.deleteIfExists(temp1.toPath());
             Files.deleteIfExists(temp2.toPath());
+            FileUtils.deleteDirectory(new File(storagePath.toString()));
+        }
+    }
+
+    @Test
+    public void testReset() throws Exception {
+        final Path storagePath = Paths.get(".vcs_test");
+        File temp = new File(Files.createTempFile(Paths.get("."), "test.tmp", "").toString());
+        try {
+            Repository repository = new Repository(storagePath);
+            String commitMessage = "message";
+            repository.trackFile(temp.getPath());
+            repository.resetFile(temp.getPath());
+            checkOutput(() -> {
+                repository.makeCommit(commitMessage);
+                return null;
+            }, "No changes to commit" + getEndLine());
+            addFile(repository, temp, "message");
+            checkLog(repository, new String[]{commitMessage});
+        } finally {
+            Files.deleteIfExists(temp.toPath());
             FileUtils.deleteDirectory(new File(storagePath.toString()));
         }
     }
