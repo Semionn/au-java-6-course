@@ -108,13 +108,18 @@ public class Repository implements java.io.Serializable {
         }
 
         try {
-            Branch branch = branches.get(branchName);
-            Commit lastCommit = branch.getLastCommit();
-            while (lastCommit.getBranch() == branch) {
-                Files.deleteIfExists(getCommitPath(lastCommit.getHash()));
-                lastCommit = lastCommit.getPreviousCommit();
+            branches.get(branchName).markDeleted();
+            for (Branch branch: branches.values()) {
+                if (branch.possibleToDelete()) {
+                    Commit lastCommit = branch.getLastCommit();
+                    while (lastCommit.getBranch() == branch) {
+                        Files.deleteIfExists(getCommitPath(lastCommit.getHash()));
+                        lastCommit = lastCommit.getPreviousCommit();
+                    }
+                }
             }
-            branches.remove(branchName);
+            branches.values().stream().filter(Branch::possibleToDelete).collect(Collectors.toList())
+                    .forEach(branch -> branches.remove(branch.getName()));
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }
