@@ -279,7 +279,9 @@ public class Repository implements java.io.Serializable {
 
         try (Stream<Path> paths = Files.walk(getCurDirPath())) {
             for (Path path : paths.collect(Collectors.toList())) {
-                if (!path.toString().equals(".") && !indexedFiles.contains(path.toString())) {
+                if (!path.toString().equals(".") &&
+                    !indexedFiles.contains(path.toString()) &&
+                    !Files.isDirectory(path)) {
                     Files.delete(path);
                 }
             }
