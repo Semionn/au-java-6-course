@@ -5,6 +5,7 @@ import com.au.mit.vcs.common.commit.Commit;
 import com.au.mit.vcs.common.commit.Diff;
 import com.au.mit.vcs.common.exceptions.CommandExecutionException;
 import com.au.mit.vcs.common.exceptions.RepositorySerializationException;
+import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -57,6 +58,7 @@ public class Repository implements java.io.Serializable {
 
     public void trackFile(String path) {
         try {
+            path = makeRelativePath(path);
             cache.addFile(path);
             trackedDiffs.add(new Diff(path, head, false));
         } catch (IOException e) {
@@ -108,7 +110,7 @@ public class Repository implements java.io.Serializable {
 
         try {
             branches.get(branchName).markDeleted();
-            for (Branch branch: branches.values()) {
+            for (Branch branch : branches.values()) {
                 if (branch.possibleToDelete()) {
                     Commit lastCommit = branch.getLastCommit();
                     while (lastCommit.getBranch() == branch) {
@@ -162,7 +164,7 @@ public class Repository implements java.io.Serializable {
         Commit oldCommit = head;
         while (oldCommit.getDepth() > updateCommit.getDepth()) {
             for (Diff diff : oldCommit.getDiffList()) {
-                diff.undo(Paths.get(storagePath));
+                diff.undo(getCurDirPath().resolve(storagePath));
             }
             oldCommit = oldCommit.getPreviousCommit();
         }
@@ -174,7 +176,7 @@ public class Repository implements java.io.Serializable {
             }
             if (oldCommit.getDepth() == updateCommit.getDepth()) {
                 for (Diff diff : oldCommit.getDiffList()) {
-                    diff.undo(Paths.get(storagePath));
+                    diff.undo(getCurDirPath().resolve(storagePath));
                 }
                 oldCommit = oldCommit.getPreviousCommit();
             }
@@ -245,9 +247,10 @@ public class Repository implements java.io.Serializable {
 
     public void resetFile(String filePath) {
         try {
-            cache.resetFile(filePath);
+            String relativeFilePath = makeRelativePath(filePath);
+            cache.resetFile(relativeFilePath);
             trackedDiffs.stream()
-                    .filter(diff -> diff.getFilePath().toString().equals(filePath))
+                    .filter(diff -> diff.getFileStrPath().equals(relativeFilePath))
                     .collect(Collectors.toList())
                     .forEach(trackedDiffs::remove);
         } catch (IOException e) {
@@ -256,32 +259,38 @@ public class Repository implements java.io.Serializable {
     }
 
     public void removeFile(String filePath) {
-        if (!cache.containsFile(filePath) && !Files.exists(Paths.get(filePath))) {
+        filePath = makeRelativePath(filePath);
+        if (!cache.containsFile(filePath) && !Files.exists(getCurDirPath().resolve(filePath))) {
             throw new CommandExecutionException(String.format("File '%s' not found in the index", filePath));
         }
 
         try {
             resetFile(filePath);
             trackedDiffs.add(new Diff(filePath, head, true));
-            Files.deleteIfExists(Paths.get(filePath));
+            Files.deleteIfExists(getCurDirPath().resolve(filePath));
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }
     }
 
     public void clean() {
-        Set<String> indexedFiles = cache.getFiles();
+        Set<String> indexedFiles = cache.getFiles().stream()
+                .map(path -> getCurDirPath().resolve(path).toAbsolutePath().toString())
+                .collect(Collectors.toSet());
         Commit currentHead = head;
         while (currentHead != null) {
-            indexedFiles.addAll(currentHead.getDiffMap().keySet());
+            indexedFiles.addAll(currentHead.getDiffMap().keySet().stream()
+                    .map(path -> getCurDirPath().resolve(path).toAbsolutePath().toString())
+                    .collect(Collectors.toSet()));
             currentHead = currentHead.getPreviousCommit();
         }
 
         try (Stream<Path> paths = Files.walk(getCurDirPath())) {
             for (Path path : paths.collect(Collectors.toList())) {
                 if (!path.toString().equals(".") &&
-                    !indexedFiles.contains(path.toString()) &&
-                    !Files.isDirectory(path)) {
+                        !indexedFiles.contains(path.toString()) &&
+                        !isInStoragePath(path) &&
+                        !Files.isDirectory(path)) {
                     Files.delete(path);
                 }
             }
@@ -296,6 +305,44 @@ public class Repository implements java.io.Serializable {
             System.out.println(currCommit.print());
             currCommit = currCommit.getPreviousCommit();
         }
+    }
+
+    public void printStatus() {
+        Set<String> indexedFiles = cache.getFiles().stream()
+                .map(path -> getCurDirPath().resolve(path).toAbsolutePath().toString())
+                .collect(Collectors.toSet());
+        Set<String> added = new HashSet<>();
+        Set<String> modified = new HashSet<>();
+        Set<String> untracked = new HashSet<>();
+
+        try (Stream<Path> paths = Files.walk(getCurDirPath())) {
+            for (Path path : paths.collect(Collectors.toList())) {
+                if (!path.toString().equals(".") &&
+                        !isInStoragePath(path) &&
+                        !Files.isDirectory(path)) {
+                    if (indexedFiles.contains(path.toString())) {
+                        String currentFilePath = path.toString();
+                        String cachedFilePath = cache.getCachePath().resolve(getCurDirPath().relativize(path)).toString();
+                        if (FileUtils.contentEquals(new File(currentFilePath), new File(cachedFilePath))) {
+                            added.add(path.toString());
+                        } else {
+                            modified.add(path.toString());
+                        }
+                    } else {
+                        untracked.add(path.toString());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Changes to be committed:");
+        added.forEach(System.out::println);
+        System.out.println("Changes not staged for commit:");
+        modified.forEach(System.out::println);
+        System.out.println("Untracked files:");
+        untracked.forEach(System.out::println);
     }
 
     public static void serialize(Repository repository, Path storagePath) {
@@ -330,12 +377,29 @@ public class Repository implements java.io.Serializable {
         return storagePath.resolve("meta");
     }
 
+    private String makeRelativePath(String path) {
+        return getCurDirPath().relativize(Paths.get(path).toAbsolutePath()).toString();
+    }
+
     private Path getCommitPath(String commitHash) {
-        return Paths.get(storagePath).resolve(commitHash);
+        return getCurDirPath().resolve(storagePath).resolve(commitHash);
     }
 
     private static String getCommitHash(String hash) {
         return calcSHA1(hash).substring(0, HASH_LENGTH);
+    }
+
+    private boolean isInStoragePath(Path path) {
+        String absoluteStoragePath = getCurDirPath().resolve(storagePath).toAbsolutePath().toString();
+        while (path.getParent() != path &&
+                path.getParent() != null &&
+                !path.toAbsolutePath().toString().equals(absoluteStoragePath)) {
+            if (path.endsWith(storagePath)) {
+                return true;
+            }
+            path = path.getParent();
+        }
+        return path.endsWith(storagePath);
     }
 
     private class Cache implements java.io.Serializable {
@@ -355,12 +419,12 @@ public class Repository implements java.io.Serializable {
         }
 
         public void addFile(String filePath) throws IOException {
-            if (!Files.exists(Paths.get(filePath))) {
+            if (!Files.exists(getCurDirPath().resolve(filePath))) {
                 throw new CommandExecutionException(String.format("File '%s' not found", path));
             }
             final Path pathToSave = getCachePath().resolve(filePath);
             new File(pathToSave.toString()).getParentFile().mkdirs();
-            Files.copy(Paths.get(filePath), pathToSave, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(getCurDirPath().resolve(filePath), pathToSave, StandardCopyOption.REPLACE_EXISTING);
             files.add(filePath);
         }
 
@@ -378,8 +442,8 @@ public class Repository implements java.io.Serializable {
             files.remove(filePath);
         }
 
-        private Path getCachePath() {
-            return Paths.get(storagePath).resolve(path);
+        public Path getCachePath() {
+            return getCurDirPath().resolve(storagePath).resolve(path);
         }
 
         public Set<String> getFiles() {

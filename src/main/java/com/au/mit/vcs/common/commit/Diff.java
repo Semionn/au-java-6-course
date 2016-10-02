@@ -8,8 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
-import static com.au.mit.vcs.common.Utility.calcFileSHA1;
-import static com.au.mit.vcs.common.Utility.calcSHA1;
+import static com.au.mit.vcs.common.Utility.*;
 
 /**
  * Created by semionn on 23.09.16.
@@ -26,7 +25,7 @@ public class Diff implements java.io.Serializable {
     }
 
     public Path getFilePath() {
-        return Paths.get(filePath);
+        return getCurDirPath().resolve(filePath);
     }
 
     public String getFileStrPath() {
@@ -36,7 +35,7 @@ public class Diff implements java.io.Serializable {
     public String calcHash() {
         String result = calcSHA1(Long.toString(new java.util.Date().getTime()));
         if (!deleting) {
-            result = calcSHA1(calcFileSHA1(filePath) + result);
+            result = calcSHA1(calcFileSHA1(getCurrentAbsolutePath(filePath).toString()) + result);
         }
         return result;
     }
@@ -46,7 +45,7 @@ public class Diff implements java.io.Serializable {
             if (deleting) {
                 Files.deleteIfExists(getFilePath());
             } else {
-                Files.copy(commitPath.resolve(getFilePath()), getFilePath(), StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(commitPath.resolve(filePath), getFilePath(), StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
             throw new CommandExecutionException(e);
@@ -64,7 +63,7 @@ public class Diff implements java.io.Serializable {
                 }
             }
             Path commitPath = storagePath.resolve(previousFileChangeCommit.getHash());
-            Files.copy(commitPath.resolve(getFilePath()), getFilePath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(commitPath.resolve(filePath), getFilePath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }

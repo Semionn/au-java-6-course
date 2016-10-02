@@ -23,7 +23,11 @@ public class VCSApp {
                 new BranchCmd(),
                 new CheckoutCmd(),
                 new MergeCmd(),
-                new LogCmd());
+                new LogCmd(),
+                new ResetCmd(),
+                new RemoveCmd(),
+                new CleanCmd(),
+                new StatusCmd());
         final Callable<Void> task = new VCSParser(commands).parse(repository, args);
         task.call();
         Repository.serialize(repository, storagePath);

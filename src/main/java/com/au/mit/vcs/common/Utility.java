@@ -22,6 +22,10 @@ public class Utility {
         return Paths.get(getCurDir());
     }
 
+    public static Path getCurrentAbsolutePath(String path) {
+        return getCurDirPath().resolve(path).toAbsolutePath();
+    }
+
     public static String calcFileSHA1(String filePath) {
         try (FileInputStream fs = new FileInputStream(filePath)) {
             return Utility.calcSHA1(IOUtils.readFully(fs, -1, true));

@@ -1,12 +1,12 @@
 package com.au.mit.vcs.common;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -19,9 +19,15 @@ import static org.junit.Assert.*;
  */
 public class RepositoryTest {
 
+    @Before
+    public void changeDir() throws IOException {
+        final Path tempDirectoryPath = Files.createTempDirectory("");
+        System.setProperty("user.dir", tempDirectoryPath.toAbsolutePath().toString());
+    }
+
     @Test
     public void testMakeCommit() throws Exception {
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp = new File(Files.createTempFile(getCurDirPath(), "test.tmp", "").toString());
         try {
             Repository repository = new Repository(storagePath);
@@ -36,7 +42,7 @@ public class RepositoryTest {
 
     @Test
     public void testCheckout() throws Exception {
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp1 = new File(Files.createTempFile(getCurDirPath(), "test.tmp", "").toString());
         File temp2 = new File(Files.createTempFile(getCurDirPath(), "test2.tmp", "").toString());
         try {
@@ -61,7 +67,7 @@ public class RepositoryTest {
 
     @Test
     public void testRemoveBranch() throws Exception {
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp1 = new File(Files.createTempFile(getCurDirPath(), "test.tmp", "").toString());
         File temp2 = new File(Files.createTempFile(getCurDirPath(), "test2.tmp", "").toString());
         try {
@@ -92,7 +98,7 @@ public class RepositoryTest {
 
     @Test
     public void testMerge() throws Exception {
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp1 = new File(Files.createTempFile(getCurDirPath(), "test.tmp", "").toString());
         File temp2 = new File(Files.createTempFile(getCurDirPath(), "test2.tmp", "").toString());
         try {
@@ -114,7 +120,7 @@ public class RepositoryTest {
 
     @Test
     public void testReset() throws Exception {
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp = new File(Files.createTempFile(getCurDirPath(), "test.tmp", "").toString());
         try {
             Repository repository = new Repository(storagePath);
@@ -135,7 +141,7 @@ public class RepositoryTest {
 
     @Test
     public void testRemove() throws Exception {
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp = new File(Files.createTempFile(getCurDirPath(), "test.tmp", "").toString());
         try {
             Repository repository = new Repository(storagePath);
@@ -160,10 +166,7 @@ public class RepositoryTest {
 
     @Test
     public void testClean() throws Exception {
-        final Path tempDirectoryPath = Files.createTempDirectory("");
-        System.setProperty("user.dir", tempDirectoryPath.toAbsolutePath().toString());
-
-        final Path storagePath = Paths.get(".vcs_test");
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
         File temp1 = new File(Files.createTempFile(getCurDirPath(), "test1.tmp", "").toString());
         File temp2 = new File(Files.createTempFile(getCurDirPath(), "test2.tmp", "").toString());
         try {
@@ -175,6 +178,36 @@ public class RepositoryTest {
         } finally {
             Files.deleteIfExists(temp1.toPath());
             Files.deleteIfExists(temp2.toPath());
+            FileUtils.deleteDirectory(new File(storagePath.toString()));
+        }
+    }
+
+    @Test
+    public void testStatus() throws Exception {
+        final Path storagePath = getCurDirPath().resolve(".vcs_test");
+        File temp1 = new File(Files.createTempFile(getCurDirPath(), "test1.tmp", "").toString());
+        File temp2 = new File(Files.createTempFile(getCurDirPath(), "test2.tmp", "").toString());
+        File temp3 = new File(Files.createTempFile(getCurDirPath(), "test3.tmp", "").toString());
+        try {
+            Repository repository = new Repository(storagePath);
+            repository.trackFile(temp1.getPath());
+            repository.trackFile(temp2.getPath());
+            try (FileOutputStream fs = new FileOutputStream(temp2)) {
+                fs.write("new text".getBytes());
+            }
+            checkOutput(() -> {
+                repository.printStatus();
+                return null;
+            }, "Changes to be committed:" + getEndLine() +
+                    temp1.getAbsolutePath() + getEndLine() +
+                    "Changes not staged for commit:" + getEndLine() +
+                    temp2.getAbsolutePath() + getEndLine() +
+                    "Untracked files:" + getEndLine() +
+                    temp3.getAbsolutePath() + getEndLine());
+        } finally {
+            Files.deleteIfExists(temp1.toPath());
+            Files.deleteIfExists(temp2.toPath());
+            Files.deleteIfExists(temp3.toPath());
             FileUtils.deleteDirectory(new File(storagePath.toString()));
         }
     }
