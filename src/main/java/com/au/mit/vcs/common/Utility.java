@@ -5,6 +5,8 @@ import sun.misc.IOUtils;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -12,6 +14,14 @@ import java.security.NoSuchAlgorithmException;
  * Created by semionn on 25.09.16.
  */
 public class Utility {
+    public static String getCurDir() {
+        return System.getProperty("user.dir");
+    }
+
+    public static Path getCurDirPath() {
+        return Paths.get(getCurDir());
+    }
+
     public static String calcFileSHA1(String filePath) {
         try (FileInputStream fs = new FileInputStream(filePath)) {
             return Utility.calcSHA1(IOUtils.readFully(fs, -1, true));

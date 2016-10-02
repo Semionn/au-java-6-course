@@ -14,9 +14,11 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.au.mit.vcs.common.Utility.calcFileSHA1;
 import static com.au.mit.vcs.common.Utility.calcSHA1;
+import static com.au.mit.vcs.common.Utility.getCurDirPath;
 
 /**
  * Created by semionn on 22.09.16.
@@ -267,6 +269,25 @@ public class Repository implements java.io.Serializable {
         }
     }
 
+    public void clean() {
+        Set<String> indexedFiles = cache.getFiles();
+        Commit currentHead = head;
+        while (currentHead != null) {
+            indexedFiles.addAll(currentHead.getDiffMap().keySet());
+            currentHead = currentHead.getPreviousCommit();
+        }
+
+        try (Stream<Path> paths = Files.walk(getCurDirPath())) {
+            for (Path path : paths.collect(Collectors.toList())) {
+                if (!path.toString().equals(".") && !indexedFiles.contains(path.toString())) {
+                    Files.delete(path);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void printLog() {
         Commit currCommit = head;
         while (currCommit.getDepth() != 0) {
@@ -357,6 +378,10 @@ public class Repository implements java.io.Serializable {
 
         private Path getCachePath() {
             return Paths.get(storagePath).resolve(path);
+        }
+
+        public Set<String> getFiles() {
+            return files;
         }
     }
 }
