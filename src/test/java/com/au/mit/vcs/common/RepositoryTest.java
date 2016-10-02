@@ -7,6 +7,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import static org.junit.Assert.*;
@@ -122,8 +124,33 @@ public class RepositoryTest {
                 repository.makeCommit(commitMessage);
                 return null;
             }, "No changes to commit" + getEndLine());
-            addFile(repository, temp, "message");
+            addFile(repository, temp, commitMessage);
             checkLog(repository, new String[]{commitMessage});
+        } finally {
+            Files.deleteIfExists(temp.toPath());
+            FileUtils.deleteDirectory(new File(storagePath.toString()));
+        }
+    }
+
+    @Test
+    public void testRemove() throws Exception {
+        final Path storagePath = Paths.get(".vcs_test");
+        File temp = new File(Files.createTempFile(Paths.get("."), "test.tmp", "").toString());
+        try {
+            Repository repository = new Repository(storagePath);
+            String commitMessage = "message";
+            addFile(repository, temp, commitMessage);
+            repository.removeFile(temp.getPath());
+            checkOutput(() -> {
+                repository.makeCommit(commitMessage);
+                return null;
+            }, "Committed successfully" + getEndLine());
+            final List<String> commitHashes = checkLog(repository, new String[]{commitMessage, commitMessage});
+            repository.checkout(commitHashes.get(1));
+            checkLog(repository, new String[]{commitMessage});
+            assertTrue(Files.exists(temp.toPath()));
+            repository.checkout(commitHashes.get(0));
+            assertFalse(Files.exists(temp.toPath()));
         } finally {
             Files.deleteIfExists(temp.toPath());
             FileUtils.deleteDirectory(new File(storagePath.toString()));
@@ -139,7 +166,7 @@ public class RepositoryTest {
         repository.makeCommit(commitMessage);
     }
 
-    private void checkLog(Repository repository, String[] logMessages) {
+    private List<String> checkLog(Repository repository, String[] logMessages) {
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
              PrintStream out = new PrintStream(byteArrayOutputStream, true, "UTF-8")) {
 
@@ -152,15 +179,18 @@ public class RepositoryTest {
 
             final String shellOutput = byteArrayOutputStream.toString("UTF-8");
             final String[] outputLines = shellOutput.split(getEndLine());
+            final List<String> commitHashes = new ArrayList<>();
             int checkedMessagesCount = 0;
             for (int i = 0; i < outputLines.length; i++) {
                 final String[] splitted = outputLines[i].split(": ");
                 if (splitted.length > 1) {
+                    commitHashes.add(splitted[0]);
                     assertEquals(splitted[1], logMessages[i]);
                     checkedMessagesCount++;
                 }
             }
             assertEquals(checkedMessagesCount, logMessages.length);
+            return commitHashes;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

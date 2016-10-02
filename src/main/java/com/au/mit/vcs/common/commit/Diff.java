@@ -17,10 +17,12 @@ import static com.au.mit.vcs.common.Utility.calcSHA1;
 public class Diff implements java.io.Serializable {
     private final String filePath;
     private final Commit previousHead;
+    private final boolean deleting;
 
-    public Diff(String filePath, Commit previousHead) {
+    public Diff(String filePath, Commit previousHead, boolean deleting) {
         this.filePath = filePath;
         this.previousHead = previousHead;
+        this.deleting = deleting;
     }
 
     public Path getFilePath() {
@@ -32,12 +34,20 @@ public class Diff implements java.io.Serializable {
     }
 
     public String calcHash() {
-        return calcSHA1(calcFileSHA1(filePath) + calcSHA1(Long.toString(new java.util.Date().getTime())));
+        String result = calcSHA1(Long.toString(new java.util.Date().getTime()));
+        if (!deleting) {
+            result = calcSHA1(calcFileSHA1(filePath) + result);
+        }
+        return result;
     }
 
     public void apply(Path commitPath) {
         try {
-            Files.copy(commitPath.resolve(getFilePath()), getFilePath(), StandardCopyOption.REPLACE_EXISTING);
+            if (deleting) {
+                Files.deleteIfExists(getFilePath());
+            } else {
+                Files.copy(commitPath.resolve(getFilePath()), getFilePath(), StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }
@@ -46,7 +56,7 @@ public class Diff implements java.io.Serializable {
     public void undo(Path storagePath) {
         try {
             Commit previousFileChangeCommit = previousHead;
-            while (!previousFileChangeCommit.getDiffList().contains(filePath)) {
+            while (!previousFileChangeCommit.getDiffList().stream().anyMatch(diff -> diff.filePath.equals(filePath))) {
                 previousFileChangeCommit = previousFileChangeCommit.getPreviousCommit();
                 if (previousFileChangeCommit == null) {
                     Files.deleteIfExists(getFilePath());

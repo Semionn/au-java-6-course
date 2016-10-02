@@ -56,7 +56,7 @@ public class Repository implements java.io.Serializable {
     public void trackFile(String path) {
         try {
             cache.addFile(path);
-            trackedDiffs.add(new Diff(path, head));
+            trackedDiffs.add(new Diff(path, head, false));
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }
@@ -237,7 +237,7 @@ public class Repository implements java.io.Serializable {
             diff.apply(commitPath);
         }
 
-        totalDiff.forEach((s, diff) -> trackedDiffs.add(new Diff(s, head)));
+        totalDiff.forEach((s, diff) -> trackedDiffs.add(new Diff(s, head, false)));
         makeCommit(String.format("Merged from '%s' to '%s'", branchName, currentBranch.getName()));
     }
 
@@ -248,6 +248,20 @@ public class Repository implements java.io.Serializable {
                     .filter(diff -> diff.getFilePath().toString().equals(filePath))
                     .collect(Collectors.toList())
                     .forEach(trackedDiffs::remove);
+        } catch (IOException e) {
+            throw new CommandExecutionException(e);
+        }
+    }
+
+    public void removeFile(String filePath) {
+        if (!cache.containsFile(filePath) && !Files.exists(Paths.get(filePath))) {
+            throw new CommandExecutionException(String.format("File '%s' not found in the index", filePath));
+        }
+
+        try {
+            resetFile(filePath);
+            trackedDiffs.add(new Diff(filePath, head, true));
+            Files.deleteIfExists(Paths.get(filePath));
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }
@@ -311,6 +325,10 @@ public class Repository implements java.io.Serializable {
 
         public Cache(Set<String> files) {
             this.files = files;
+        }
+
+        public boolean containsFile(String filePath) {
+            return files.contains(filePath);
         }
 
         public void addFile(String filePath) throws IOException {
