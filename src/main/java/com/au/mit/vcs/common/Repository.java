@@ -35,25 +35,14 @@ public class Repository implements java.io.Serializable {
     private Cache cache;
 
     public Repository(Path storagePath) {
-        this.trackedDiffs = new ArrayList<>();
         this.storagePath = storagePath.toString();
+        trackedDiffs = new ArrayList<>();
         cache = new Cache();
         currentBranch = new Branch("master", null);
         head = new Commit("", "", currentBranch, head, trackedDiffs);
         commits = Arrays.asList(head).stream().collect(Collectors.toMap(Commit::getHash, Function.identity()));
         currentBranch.setLastCommit(head);
         branches = Arrays.asList(currentBranch).stream().collect(Collectors.toMap(Branch::getName, Function.identity()));
-    }
-
-    public Repository(Commit head, Branch currentBranch, Map<String, Branch> branches, Map<String, Commit> commits,
-                      List<Diff> trackedDiffs, Path storagePath, Cache cache) {
-        this.head = head;
-        this.currentBranch = currentBranch;
-        this.branches = branches;
-        this.commits = commits;
-        this.trackedDiffs = trackedDiffs;
-        this.storagePath = storagePath.toString();
-        this.cache = cache;
     }
 
     public void trackFile(String path) {
@@ -67,7 +56,7 @@ public class Repository implements java.io.Serializable {
     }
 
     public void makeCommit(String message) {
-        if (trackedDiffs.size() == 0) {
+        if (trackedDiffs.isEmpty()) {
             System.out.println("No changes to commit");
             return;
         }
@@ -93,6 +82,10 @@ public class Repository implements java.io.Serializable {
     }
 
     public void makeBranch(String branchName) {
+        if (branches.containsKey(branchName)) {
+            System.out.println(String.format("Branch with name '%s' already exists", branchName));
+            return;
+        }
         Branch newBranch = new Branch(branchName, head);
         branches.put(branchName, newBranch);
     }

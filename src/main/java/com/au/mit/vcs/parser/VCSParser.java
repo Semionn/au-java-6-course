@@ -29,6 +29,8 @@ public class VCSParser {
             throw new CommandNotFoundException("Not enough arguments");
         }
         if (!commands.containsKey(args[0])) {
+            System.out.println("List of available commands:");
+            commands.keySet().forEach(System.out::println);
             throw new CommandNotFoundException(String.format("Command '%s' not found", args[0]));
         }
         Command command = commands.get(args[0]);
