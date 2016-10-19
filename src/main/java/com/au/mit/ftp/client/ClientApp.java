@@ -15,7 +15,7 @@ public class ClientApp {
             return;
         }
 
-        String address = args[1];
+        String address = args[0];
         int port = Integer.parseInt(args[1]);
 
         Client client = new Client(port, address);
@@ -42,18 +42,18 @@ public class ClientApp {
                 client.connect();
                 break;
             case "list":
-                if (arguments.length < 1) {
-                    System.out.println("Not enough arguments - provide path");
-                    break;
+                String listPath = "";
+                if (arguments.length >= 1) {
+                    listPath = arguments[0];
                 }
-                client.executeGet(arguments[0]);
+                client.executeList(listPath);
                 break;
             case "get":
-                if (arguments.length < 1) {
-                    System.out.println("Not enough arguments - provide path");
-                    break;
+                String getPath = "";
+                if (arguments.length >= 1) {
+                    getPath = arguments[0];
                 }
-                client.executeGet(arguments[0]);
+                client.executeGet(getPath);
                 break;
             default:
                 System.out.println("Unknown command");

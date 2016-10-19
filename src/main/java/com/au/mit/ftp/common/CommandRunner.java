@@ -43,7 +43,7 @@ public class CommandRunner {
                 throw new CommunicationException(e.getMessage(), e);
             }
         }
-        final File[] filesList = targetDir.listFiles(File::isFile);
+        final File[] filesList = targetDir.listFiles();
         if (filesList != null) {
             try {
                 out.writeInt(filesList.length);

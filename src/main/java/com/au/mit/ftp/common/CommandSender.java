@@ -56,6 +56,7 @@ public class CommandSender {
                     fileOutput.write(buffer, 0, readBytes);
                 }
             }
+            System.out.println("File successfully downloaded");
         } catch (IOException e) {
             throw new CommunicationException(e.getMessage(), e);
         }
