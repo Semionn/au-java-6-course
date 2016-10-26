@@ -1,11 +1,10 @@
-package com.au.mit.vcs.common.commands;
+package com.au.mit.vcs.common;
 
-import com.au.mit.vcs.common.Repository;
+import com.au.mit.vcs.common.command.args.CommandArgs;
+import com.au.mit.vcs.common.commit.Commit;
 import com.au.mit.vcs.common.exceptions.CommandBuildingException;
-import com.au.mit.vcs.common.exceptions.NotEnoughArgumentsException;
 import org.apache.commons.cli.Options;
 
-import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -19,8 +18,16 @@ public class LogCmd extends Command {
     @Override
     public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
         return () -> {
-            repository.printLog();
+            printLog(repository);
             return null;
         };
+    }
+
+    public static void printLog(Repository repository) {
+        Commit currCommit = repository.getHead();
+        while (currCommit.getDepth() != 0) {
+            System.out.println(currCommit.print());
+            currCommit = currCommit.getPreviousCommit();
+        }
     }
 }

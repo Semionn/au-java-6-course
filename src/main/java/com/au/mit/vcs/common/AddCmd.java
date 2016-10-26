@@ -1,10 +1,13 @@
-package com.au.mit.vcs.common.commands;
+package com.au.mit.vcs.common;
 
-import com.au.mit.vcs.common.Repository;
+import com.au.mit.vcs.common.command.args.CommandArgs;
+import com.au.mit.vcs.common.commit.Diff;
 import com.au.mit.vcs.common.exceptions.CommandBuildingException;
+import com.au.mit.vcs.common.exceptions.CommandExecutionException;
 import com.au.mit.vcs.common.exceptions.NotEnoughArgumentsException;
 import org.apache.commons.cli.Options;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -24,8 +27,18 @@ public class AddCmd extends Command {
         }
 
         return () -> {
-            repository.trackFile(args.get(0));
+            addFile(repository, args.get(0));
             return null;
         };
+    }
+
+    public static void addFile(Repository repository, String path) {
+        try {
+            path = repository.makeRelativePath(path);
+            repository.getCache().addFile(path);
+            repository.getTrackedDiffs().add(new Diff(path, repository.getHead(), false));
+        } catch (IOException e) {
+            throw new CommandExecutionException(e);
+        }
     }
 }

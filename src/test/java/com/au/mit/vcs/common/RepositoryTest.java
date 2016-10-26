@@ -50,13 +50,13 @@ public class RepositoryTest {
             addFile(repository, temp1, "message1");
 
             String branchName = "new-branch";
-            repository.makeBranch(branchName);
+            BranchCmd.makeBranch(repository, branchName);
             addFile(repository, temp2, "message2");
 
             checkLog(repository, new String[]{"message2", "message1"});
-            repository.checkout(branchName);
+            CheckoutCmd.checkout(repository, branchName);
             checkLog(repository, new String[]{"message1"});
-            repository.checkout("master");
+            CheckoutCmd.checkout(repository, "master");
             checkLog(repository, new String[]{"message2", "message1"});
         } finally {
             Files.deleteIfExists(temp1.toPath());
@@ -75,17 +75,17 @@ public class RepositoryTest {
             addFile(repository, temp1, "message1");
 
             String branchName = "new-branch";
-            repository.makeBranch(branchName);
+            BranchCmd.makeBranch(repository, branchName);
             addFile(repository, temp2, "message2");
 
             checkLog(repository, new String[]{"message2", "message1"});
-            repository.checkout(branchName);
+            CheckoutCmd.checkout(repository, branchName);
             checkLog(repository, new String[]{"message1"});
-            repository.checkout("master");
+            CheckoutCmd.checkout(repository, "master");
             checkLog(repository, new String[]{"message2", "message1"});
-            repository.removeBranch(branchName);
+            BranchCmd.removeBranch(repository, branchName);
             checkOutput(() -> {
-                repository.checkout(branchName);
+                CheckoutCmd.checkout(repository, branchName);
                 return null;
             }, String.format("Branch or revision '%s' not found" + getEndLine(), branchName));
 
@@ -106,10 +106,10 @@ public class RepositoryTest {
             addFile(repository, temp1, "message1");
 
             String branchName = "new-branch";
-            repository.makeBranch(branchName);
+            BranchCmd.makeBranch(repository, branchName);
             addFile(repository, temp2, "message2");
-            repository.checkout(branchName);
-            repository.merge("master");
+            CheckoutCmd.checkout(repository, branchName);
+            MergeCmd.merge(repository, "master");
             checkLog(repository, new String[]{"Merged from 'master' to 'new-branch'", "message1"});
         } finally {
             Files.deleteIfExists(temp1.toPath());
@@ -125,10 +125,10 @@ public class RepositoryTest {
         try {
             Repository repository = new Repository(storagePath);
             String commitMessage = "message";
-            repository.trackFile(temp.getPath());
-            repository.resetFile(temp.getPath());
+            AddCmd.addFile(repository, temp.getPath());
+            ResetCmd.resetFile(repository, temp.getPath());
             checkOutput(() -> {
-                repository.makeCommit(commitMessage);
+                CommitCmd.makeCommit(repository, commitMessage);
                 return null;
             }, "No changes to commit" + getEndLine());
             addFile(repository, temp, commitMessage);
@@ -147,16 +147,16 @@ public class RepositoryTest {
             Repository repository = new Repository(storagePath);
             String commitMessage = "message";
             addFile(repository, temp, commitMessage);
-            repository.removeFile(temp.getPath());
+            RemoveCmd.removeFile(repository, temp.getPath());
             checkOutput(() -> {
-                repository.makeCommit(commitMessage);
+                CommitCmd.makeCommit(repository, commitMessage);
                 return null;
-            }, "Committed successfully" + getEndLine());
+            }, "Committed successfully");
             final List<String> commitHashes = checkLog(repository, new String[]{commitMessage, commitMessage});
-            repository.checkout(commitHashes.get(1));
+            CheckoutCmd.checkout(repository, commitHashes.get(1));
             checkLog(repository, new String[]{commitMessage});
             assertTrue(Files.exists(temp.toPath()));
-            repository.checkout(commitHashes.get(0));
+            CheckoutCmd.checkout(repository, commitHashes.get(0));
             assertFalse(Files.exists(temp.toPath()));
         } finally {
             Files.deleteIfExists(temp.toPath());
@@ -173,7 +173,7 @@ public class RepositoryTest {
             Repository repository = new Repository(storagePath);
             String commitMessage = "message";
             addFile(repository, temp1, commitMessage);
-            repository.clean();
+            CleanCmd.clean(repository);
             assertFalse(Files.exists(temp2.toPath()));
         } finally {
             Files.deleteIfExists(temp1.toPath());
@@ -190,13 +190,13 @@ public class RepositoryTest {
         File temp3 = new File(Files.createTempFile(getCurDirPath(), "test3.tmp", "").toString());
         try {
             Repository repository = new Repository(storagePath);
-            repository.trackFile(temp1.getPath());
-            repository.trackFile(temp2.getPath());
+            AddCmd.addFile(repository, temp1.getPath());
+            AddCmd.addFile(repository, temp2.getPath());
             try (FileOutputStream fs = new FileOutputStream(temp2)) {
                 fs.write("new text".getBytes());
             }
             checkOutput(() -> {
-                repository.printStatus();
+                StatusCmd.printStatus(repository);
                 return null;
             }, "Changes to be committed:" + getEndLine() +
                     temp1.getAbsolutePath() + getEndLine() +
@@ -214,11 +214,11 @@ public class RepositoryTest {
 
     private void addFile(Repository repository, File temp, String commitMessage) throws IOException {
         String tempFileText = "text";
-        repository.trackFile(temp.getPath());
+        AddCmd.addFile(repository, temp.getPath());
         try (FileOutputStream fs = new FileOutputStream(temp)) {
             fs.write(tempFileText.getBytes());
         }
-        repository.makeCommit(commitMessage);
+        CommitCmd.makeCommit(repository, commitMessage);
     }
 
     private List<String> checkLog(Repository repository, String[] logMessages) {
@@ -227,7 +227,7 @@ public class RepositoryTest {
 
             try {
                 System.setOut(out);
-                repository.printLog();
+                LogCmd.printLog(repository);
             } finally {
                 System.setOut(System.out);
             }
@@ -263,7 +263,7 @@ public class RepositoryTest {
             }
 
             final String shellOutput = byteArrayOutputStream.toString("UTF-8");
-            assertEquals(rightLog, shellOutput);
+            assertEquals(rightLog, shellOutput.substring(0, rightLog.length()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

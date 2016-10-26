@@ -1,8 +1,8 @@
 package com.au.mit.vcs.parser;
 
 import com.au.mit.vcs.common.Repository;
-import com.au.mit.vcs.common.commands.ApacheCLIArgs;
-import com.au.mit.vcs.common.commands.Command;
+import com.au.mit.vcs.common.command.args.ApacheCLIArgs;
+import com.au.mit.vcs.common.Command;
 import com.au.mit.vcs.common.exceptions.CommandBuildingException;
 import com.au.mit.vcs.common.exceptions.CommandNotFoundException;
 import org.apache.commons.cli.*;

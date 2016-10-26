@@ -1,6 +1,6 @@
-package com.au.mit.vcs.common.commands;
+package com.au.mit.vcs.common;
 
-import com.au.mit.vcs.common.Repository;
+import com.au.mit.vcs.common.command.args.CommandArgs;
 import com.au.mit.vcs.common.exceptions.CommandBuildingException;
 import org.apache.commons.cli.Options;
 

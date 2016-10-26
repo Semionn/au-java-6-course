@@ -1,4 +1,4 @@
-package com.au.mit.vcs.common.commands;
+package com.au.mit.vcs.common.command.args;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;

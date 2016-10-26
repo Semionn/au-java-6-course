@@ -1,4 +1,4 @@
-package com.au.mit.vcs.common.commands;
+package com.au.mit.vcs.common.command.args;
 
 import java.util.List;
 import java.util.Map;

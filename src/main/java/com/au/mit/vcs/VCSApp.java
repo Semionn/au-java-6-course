@@ -1,7 +1,6 @@
 package com.au.mit.vcs;
 
-import com.au.mit.vcs.common.Repository;
-import com.au.mit.vcs.common.commands.*;
+import com.au.mit.vcs.common.*;
 import com.au.mit.vcs.parser.VCSParser;
 
 import java.nio.file.Path;
