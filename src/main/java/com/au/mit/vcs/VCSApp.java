@@ -10,9 +10,17 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * Created by semionn on 22.09.16.
+ * Console application for the VCS repository
  */
 public class VCSApp {
+
+    /**
+     * Starts the VCS application.
+     * Path to repository: .vcs
+     * After command execution application will be closed
+     * @param args the VCS command and its arguments
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         Path storagePath = Paths.get(".vcs");
         Repository repository = Repository.deserialize(storagePath);

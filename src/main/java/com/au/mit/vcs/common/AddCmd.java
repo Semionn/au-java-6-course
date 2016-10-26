@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "add".
+ * Allows adding selected file to the index
  */
 public class AddCmd extends Command {
     public AddCmd() {
@@ -32,6 +33,11 @@ public class AddCmd extends Command {
         };
     }
 
+    /**
+     * Add specified file to the index of repository
+     * @param repository the VCS repository
+     * @param path path to file
+     */
     public static void addFile(Repository repository, String path) {
         try {
             path = repository.makeRelativePath(path);

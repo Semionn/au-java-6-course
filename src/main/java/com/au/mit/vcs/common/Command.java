@@ -7,7 +7,8 @@ import org.apache.commons.cli.Options;
 import java.util.concurrent.Callable;
 
 /**
- * Created by semionn on 23.09.16.
+ * Abstract class for the VCS commands
+ * It stores name of command and options for parsing
  */
 public abstract class Command {
     private final String name;
@@ -26,5 +27,13 @@ public abstract class Command {
         return options;
     }
 
+    /**
+     * Creates callable task with specified arguments for the command.
+     * It will affect on the specified repository
+     * @param repository the VCS repository
+     * @param commandArgs command arguments
+     * @return callable task
+     * @throws CommandBuildingException
+     */
     public abstract Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException;
 }

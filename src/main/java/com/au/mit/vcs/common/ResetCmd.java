@@ -12,7 +12,8 @@ import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "reset".
+ * Allows to remove file from the repository index
  */
 public class ResetCmd extends Command {
     public ResetCmd() {

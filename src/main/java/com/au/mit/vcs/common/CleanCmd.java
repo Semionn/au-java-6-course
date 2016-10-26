@@ -16,7 +16,8 @@ import java.util.stream.Stream;
 import static com.au.mit.vcs.common.Utility.getCurDirPath;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "clean".
+ * Allows to remove untracked files from the repository working directory
  */
 public class CleanCmd extends Command {
     public CleanCmd() {
@@ -31,6 +32,10 @@ public class CleanCmd extends Command {
         };
     }
 
+    /**
+     * Removes untracked files from the repository working directory
+     * @param repository the VCS repository
+     */
     public static void clean(Repository repository) {
         Set<String> indexedFiles = repository.getCache().getFiles().stream()
                 .map(path -> getCurDirPath().resolve(path).toAbsolutePath().toString())

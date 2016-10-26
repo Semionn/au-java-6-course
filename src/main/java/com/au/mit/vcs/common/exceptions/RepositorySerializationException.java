@@ -1,7 +1,7 @@
 package com.au.mit.vcs.common.exceptions;
 
 /**
- * Created by semionn on 23.09.16.
+ * Class for exceptions occurred during the VCS metainfo serialization
  */
 public class RepositorySerializationException extends RuntimeException {
     public RepositorySerializationException(String message) {

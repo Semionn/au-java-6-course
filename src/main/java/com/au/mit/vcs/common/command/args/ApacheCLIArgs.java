@@ -9,12 +9,16 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Created by semionn on 23.09.16.
+ * CommandArgs implementation which use ApacheCLI
  */
 public class ApacheCLIArgs implements CommandArgs {
     private final List<String> args;
     private final Map<String, String> options;
 
+    /**
+     * Extracts positional and optional arguments from CommandLine object
+     * @param commandLine ApacheCLI commandLine of parsed command
+     */
     public ApacheCLIArgs(CommandLine commandLine) {
         args = commandLine.getArgList();
         options = Arrays.asList(commandLine.getOptions()).stream()

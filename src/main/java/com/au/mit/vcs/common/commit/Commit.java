@@ -9,7 +9,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Created by semionn on 22.09.16.
+ * Corresponds to revision in VCS.
+ * Stores revision hash, message, pointer to branch and parent commit.
+ * Also stores depth of self in commit tree
  */
 public class Commit implements java.io.Serializable {
     private final String hash;
@@ -48,6 +50,9 @@ public class Commit implements java.io.Serializable {
         return diffList;
     }
 
+    /**
+     * Returns map of paths and diffs of changed files
+     */
     public Map<String, Diff> getDiffMap() {
         return diffList.stream().collect(Collectors.toMap(Diff::getFileStrPath, Function.identity()));
     }

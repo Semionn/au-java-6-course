@@ -18,7 +18,8 @@ import java.util.stream.Stream;
 import static com.au.mit.vcs.common.Utility.getCurDirPath;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "status".
+ * Allows to print status of all files in the VCS working directory (to be committed, modified, untracked)
  */
 public class StatusCmd extends Command {
     public StatusCmd() {
@@ -33,6 +34,11 @@ public class StatusCmd extends Command {
         };
     }
 
+    /**
+     * Prints status of all files in the specified repository working directory.
+     * Supported statuses: to be committed, modified, untracked
+     * @param repository the VCS repository
+     */
     public static void printStatus(Repository repository) {
         final Repository.Cache cache = repository.getCache();
         Set<String> indexedFiles = cache.getFiles().stream()

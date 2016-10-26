@@ -15,7 +15,8 @@ import java.util.concurrent.Callable;
 import static com.au.mit.vcs.common.Utility.getCurDirPath;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "remove".
+ * Allows to remove file from the VCS working directory and after commit this change
  */
 public class RemoveCmd extends Command {
     public RemoveCmd() {
@@ -35,6 +36,12 @@ public class RemoveCmd extends Command {
         };
     }
 
+    /**
+     * Removes file from the VCS working directory.
+     * This changing could be stored in the next commit
+     * @param repository the VCS repository
+     * @param filePath path to the file to remove
+     */
     public static void removeFile(Repository repository, String filePath) {
         filePath = repository.makeRelativePath(filePath);
         if (!repository.getCache().containsFile(filePath) && !Files.exists(getCurDirPath().resolve(filePath))) {

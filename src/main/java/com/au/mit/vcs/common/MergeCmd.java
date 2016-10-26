@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
 import static com.au.mit.vcs.common.Utility.calcFileSHA1;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "merge".
+ * Allows to merge commits from specified branch to current branch
  */
 public class MergeCmd extends Command {
     public MergeCmd() {
@@ -36,6 +37,11 @@ public class MergeCmd extends Command {
         };
     }
 
+    /**
+     * Merges commits from the specified branch to the current branch
+     * @param repository the VCS repository
+     * @param branchName name of merged branch
+     */
     public static void merge(Repository repository, String branchName) {
         if (!repository.getBranches().containsKey(branchName)) {
             System.out.println(String.format("Branch '%s' not found", branchName));

@@ -21,7 +21,10 @@ import static com.au.mit.vcs.common.Utility.calcSHA1;
 import static com.au.mit.vcs.common.Utility.getCurDirPath;
 
 /**
- * Created by semionn on 22.09.16.
+ * Primary class of the VCS repository.
+ * Stores information about branches, revisions and the index (Cache class)
+ * Allows to save meta information in specified file and to load from it
+ * The rest of functions implemented in Command classes
  */
 public class Repository implements java.io.Serializable {
     private final String storagePath;
@@ -33,6 +36,11 @@ public class Repository implements java.io.Serializable {
     private Branch currentBranch;
     private Commit head;
 
+    /**
+     * Repository constructor.
+     * Initializes repository with empty commit in branch "master" and empty index
+     * @param storagePath path to saving the repository meta information and the index
+     */
     public Repository(Path storagePath) {
         this.storagePath = storagePath.toString();
         trackedDiffs = new ArrayList<>();
@@ -76,6 +84,11 @@ public class Repository implements java.io.Serializable {
         this.head = head;
     }
 
+    /**
+     * Serializes the specified repository to file with the specified path
+     * @param repository the VCS repository
+     * @param storagePath path to save
+     */
     public static void serialize(Repository repository, Path storagePath) {
         try {
             new File(storagePath.toString()).mkdir();
@@ -90,6 +103,11 @@ public class Repository implements java.io.Serializable {
         }
     }
 
+    /**
+     * Deserializes repository from file with the specified path
+     * @param storagePath path to load
+     * @return loaded repository
+     */
     public static Repository deserialize(Path storagePath) {
         Repository repository;
         try {

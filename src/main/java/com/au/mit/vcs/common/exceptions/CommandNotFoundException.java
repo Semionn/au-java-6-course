@@ -1,7 +1,7 @@
 package com.au.mit.vcs.common.exceptions;
 
 /**
- * Created by semionn on 23.09.16.
+ * Thrown when the parsed command name not corresponds any known VCS command
  */
 public class CommandNotFoundException extends CommandBuildingException {
     public CommandNotFoundException(String message) {

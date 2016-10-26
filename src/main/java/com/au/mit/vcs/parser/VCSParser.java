@@ -15,16 +15,30 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Created by semionn on 23.09.16.
+ * Parser for the VCS repository.
+ * Stores list of allowed commands
+ * Allows to parse commands with their arguments from strings
  */
 public class VCSParser {
     private final Map<String, Command> commands;
 
+    /**
+     * VCSParser constructor
+     * @param commands list of commands allowed to use
+     */
     public VCSParser(List<Command> commands) {
         this.commands = commands.stream().collect(Collectors.toMap(Command::getName, Function.identity()));
     }
 
-    public Callable<Void> parse(Repository repository, String[]args) throws CommandBuildingException {
+    /**
+     * Parse command and its arguments.
+     * Returns callable task to run command with specified repository
+     * @param repository the VCS repository
+     * @param args arguments of command line to parse
+     * @return callable task
+     * @throws CommandBuildingException
+     */
+    public Callable<Void> parse(Repository repository, String[] args) throws CommandBuildingException {
         if (args.length == 0) {
             throw new CommandNotFoundException("Not enough arguments");
         }

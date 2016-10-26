@@ -16,7 +16,8 @@ import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS commands "branch -delete branch_name" and "branch branch_name".
+ * Allows creating and deleting of the VCS branches
  */
 public class BranchCmd extends Command {
     public BranchCmd() {
@@ -33,7 +34,6 @@ public class BranchCmd extends Command {
         return () -> {
             if (commandArgs.getOptions().containsValue("delete")) {
                 removeBranch(repository, args.get(0));
-
             } else {
                 makeBranch(repository, args.get(0));
             }
@@ -41,6 +41,11 @@ public class BranchCmd extends Command {
         };
     }
 
+    /**
+     * Makes brunch in specified repository with specified name
+     * @param repository the VCS repository
+     * @param branchName name of the branch
+     */
     public static void makeBranch(Repository repository, String branchName) {
         if (repository.getBranches().containsKey(branchName)) {
             System.out.println(String.format("Branch with name '%s' already exists", branchName));
@@ -50,6 +55,11 @@ public class BranchCmd extends Command {
         repository.getBranches().put(branchName, newBranch);
     }
 
+    /**
+     * Removes brunch from specified repository with specified name
+     * @param repository the VCS repository
+     * @param branchName name of the branch
+     */
     public static void removeBranch(Repository repository, String branchName) {
         final Map<String, Branch> branches = repository.getBranches();
         if (!branches.containsKey(branchName)) {

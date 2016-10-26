@@ -4,9 +4,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by semionn on 23.09.16.
+ * Interface for VCS commands arguments
+ * Returns both positional and optional arguments
  */
 public interface CommandArgs {
+
+    /**
+     * Return values of positional arguments
+     */
     List<String> getArgs();
+
+    /**
+     * Return map of names and values of optional arguments
+     */
     Map<String, String> getOptions();
 }

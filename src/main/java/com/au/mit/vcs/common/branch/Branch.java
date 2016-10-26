@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by semionn on 22.09.16.
+ * Corresponds to branch in VCS.
+ * Stores pointer to last branch commit and child branches.
+ * Could be marked as deleted, to remove it just after deleting child branches
  */
 public class Branch implements java.io.Serializable {
     private final String name;
@@ -14,6 +16,12 @@ public class Branch implements java.io.Serializable {
     private List<Branch> children;
     private boolean deleted;
 
+
+    /**
+     * Constructor, add the branch to child list of parent branch (if exists)
+     * @param name name of the branch
+     * @param parentCommit first commit of the branch
+     */
     public Branch(String name, Commit parentCommit) {
         this.name = name;
         this.lastCommit = parentCommit;
@@ -44,6 +52,9 @@ public class Branch implements java.io.Serializable {
         deleted = true;
     }
 
+    /**
+     * Check deleted mark for self and child branches recursively
+     */
     public boolean possibleToDelete() {
         for (Branch branch : children) {
             if (!branch.possibleToDelete()) {

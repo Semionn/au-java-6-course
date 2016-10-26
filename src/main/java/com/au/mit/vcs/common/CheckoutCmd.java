@@ -16,7 +16,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "checkout".
+ * Allows to checkout to specified branch or revision
  */
 public class CheckoutCmd extends Command {
     public CheckoutCmd() {
@@ -42,6 +43,9 @@ public class CheckoutCmd extends Command {
         };
     }
 
+    /**
+     * Checkout to specified branch or revision
+     */
     public static void checkout(Repository repository, String target) {
         if (!repository.getTrackedDiffs().isEmpty()) {
             System.out.println("There are uncommitted changes");

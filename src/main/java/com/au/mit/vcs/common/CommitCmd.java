@@ -18,7 +18,8 @@ import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "commit".
+ * Allows to commit tracked changes
  */
 public class CommitCmd extends Command {
     private static final Logger logger = Logger.getLogger(CommitCmd.class.getName());
@@ -37,6 +38,12 @@ public class CommitCmd extends Command {
         };
     }
 
+    /**
+     * Makes commit in specified repository with specified message
+     * It fixes changes, stored in the repository index
+     * @param repository the VCS repository
+     * @param message the commit message
+     */
     public static void makeCommit(Repository repository, String message) {
         final List<Diff> trackedDiffs = repository.getTrackedDiffs();
         if (trackedDiffs.isEmpty()) {

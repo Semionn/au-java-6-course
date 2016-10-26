@@ -1,7 +1,7 @@
 package com.au.mit.vcs.common.exceptions;
 
 /**
- * Created by semionn on 23.09.16.
+ * Thrown when command constructor received not enough arguments for the command execution
  */
 public class NotEnoughArgumentsException extends CommandBuildingException {
     public NotEnoughArgumentsException(String message) {

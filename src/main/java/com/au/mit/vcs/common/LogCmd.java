@@ -8,7 +8,8 @@ import org.apache.commons.cli.Options;
 import java.util.concurrent.Callable;
 
 /**
- * Created by semionn on 23.09.16.
+ * Corresponds to the VCS command "log".
+ * Allows to log all commits applied in current branch
  */
 public class LogCmd extends Command {
     public LogCmd() {
@@ -23,6 +24,10 @@ public class LogCmd extends Command {
         };
     }
 
+    /**
+     * Prints log of all commits applied in current branch
+     * @param repository the VCS repository
+     */
     public static void printLog(Repository repository) {
         Commit currCommit = repository.getHead();
         while (currCommit.getDepth() != 0) {

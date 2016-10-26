@@ -11,7 +11,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Created by semionn on 25.09.16.
+ * Utility class.
+ * Allows build relative paths handling and hashing of files
  */
 public class Utility {
     public static String getCurDir() {
