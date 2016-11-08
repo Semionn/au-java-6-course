@@ -17,7 +17,7 @@ public class LogCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) {
         return () -> {
             printLog(repository);
             return null;

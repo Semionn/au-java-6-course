@@ -24,7 +24,7 @@ public class RemoveCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws NotEnoughArgumentsException {
         final List<String> args = commandArgs.getArgs();
         if (args.size() == 0) {
             throw new NotEnoughArgumentsException("Path argument expected");
@@ -43,7 +43,7 @@ public class RemoveCmd extends Command {
      * @param filePath path to the file to remove
      */
     public static void removeFile(Repository repository, String filePath) {
-        filePath = repository.makeRelativePath(filePath);
+        filePath = Repository.makeRelativePath(filePath);
         if (!repository.getCache().containsFile(filePath) && !Files.exists(getCurDirPath().resolve(filePath))) {
             throw new CommandExecutionException(String.format("File '%s' not found in the index", filePath));
         }

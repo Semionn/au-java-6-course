@@ -29,7 +29,7 @@ public class CommitCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) {
         final Map<String, String> options = commandArgs.getOptions();
 
         return () -> {

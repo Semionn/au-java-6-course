@@ -25,7 +25,7 @@ public class CheckoutCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws NotEnoughArgumentsException {
         final List<String> args = commandArgs.getArgs();
         if (args.size() == 0) {
             throw new NotEnoughArgumentsException("Branch name argument expected");

@@ -25,7 +25,7 @@ public class BranchCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws NotEnoughArgumentsException {
         final List<String> args = commandArgs.getArgs();
         if (args.size() == 0) {
             throw new NotEnoughArgumentsException("Branch name argument expected");
@@ -63,13 +63,11 @@ public class BranchCmd extends Command {
     public static void removeBranch(Repository repository, String branchName) {
         final Map<String, Branch> branches = repository.getBranches();
         if (!branches.containsKey(branchName)) {
-            System.out.println(String.format("Branch '%s' not found", branchName));
-            return;
+            throw new CommandExecutionException(String.format("Branch '%s' not found", branchName));
         }
 
         if (repository.getCurrentBranch().getName().equals(branchName)) {
-            System.out.println("Cannot remove current branch");
-            return;
+            throw new CommandExecutionException("Cannot remove current branch");
         }
 
         try {

@@ -29,7 +29,14 @@ public class StatusCmd extends Command {
     @Override
     public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
         return () -> {
-            printStatus(repository);
+            final FilesStatus filesStatus = getFilesStatus(repository);
+
+            System.out.println("Changes to be committed:");
+            filesStatus.getAdded().forEach(System.out::println);
+            System.out.println("Changes not staged for commit:");
+            filesStatus.getModified().forEach(System.out::println);
+            System.out.println("Untracked files:");
+            filesStatus.getUntracked().forEach(System.out::println);
             return null;
         };
     }
@@ -39,11 +46,12 @@ public class StatusCmd extends Command {
      * Supported statuses: to be committed, modified, untracked
      * @param repository the VCS repository
      */
-    public static void printStatus(Repository repository) {
+    public static FilesStatus getFilesStatus(Repository repository) {
         final Repository.Cache cache = repository.getCache();
         Set<String> indexedFiles = cache.getFiles().stream()
                 .map(path -> getCurDirPath().resolve(path).toAbsolutePath().toString())
                 .collect(Collectors.toSet());
+        indexedFiles.addAll(repository.getIndexedFiles());
         Set<String> added = new HashSet<>();
         Set<String> modified = new HashSet<>();
         Set<String> untracked = new HashSet<>();
@@ -70,11 +78,28 @@ public class StatusCmd extends Command {
             e.printStackTrace();
         }
 
-        System.out.println("Changes to be committed:");
-        added.forEach(System.out::println);
-        System.out.println("Changes not staged for commit:");
-        modified.forEach(System.out::println);
-        System.out.println("Untracked files:");
-        untracked.forEach(System.out::println);
+        return new FilesStatus(added, modified, untracked);
+    }
+
+    public static class FilesStatus {
+        private Set<String> added, modified, untracked;
+
+        public FilesStatus(Set<String> added, Set<String> modified, Set<String> untracked) {
+            this.added = added;
+            this.modified = modified;
+            this.untracked = untracked;
+        }
+
+        public Set<String> getAdded() {
+            return added;
+        }
+
+        public Set<String> getModified() {
+            return modified;
+        }
+
+        public Set<String> getUntracked() {
+            return untracked;
+        }
     }
 }

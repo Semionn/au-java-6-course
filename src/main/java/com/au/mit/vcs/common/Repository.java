@@ -122,9 +122,20 @@ public class Repository implements java.io.Serializable {
         return repository;
     }
 
-    String makeRelativePath(String path) {
-        return getCurDirPath().relativize(Paths.get(path).toAbsolutePath()).toString();
+    Set<String> getIndexedFiles() {
+        Set<String> result = new HashSet<>();
+        Commit currentCommit = head;
+        while (currentCommit != null) {
+            result.addAll(currentCommit.getDiffList().stream()
+                    .map(Diff::getFilePath)
+                    .map(Path::toAbsolutePath)
+                    .map(Path::toString)
+                    .collect(Collectors.toList()));
+            currentCommit = currentCommit.getPreviousCommit();
+        }
+        return result;
     }
+
 
     Path getCommitPath(String commitHash) {
         return getStoragePath().resolve(commitHash);
@@ -132,6 +143,10 @@ public class Repository implements java.io.Serializable {
 
     Path getStoragePath() {
         return getCurDirPath().resolve(storagePath);
+    }
+
+    static String makeRelativePath(String path) {
+        return getCurDirPath().relativize(getCurDirPath().resolve(path).toAbsolutePath()).toString();
     }
 
     static String getCommitHash(String hash) {
@@ -173,7 +188,7 @@ public class Repository implements java.io.Serializable {
 
         public void addFile(String filePath) throws IOException {
             if (!Files.exists(getCurDirPath().resolve(filePath))) {
-                throw new CommandExecutionException(String.format("File '%s' not found", path));
+                throw new CommandExecutionException(String.format("File '%s' not found", filePath));
             }
             final Path pathToSave = getCachePath().resolve(filePath);
             new File(pathToSave.toString()).getParentFile().mkdirs();

@@ -21,7 +21,7 @@ public class ResetCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws NotEnoughArgumentsException {
         final List<String> args = commandArgs.getArgs();
         if (args.size() == 0) {
             throw new NotEnoughArgumentsException("Path argument expected");
@@ -35,7 +35,7 @@ public class ResetCmd extends Command {
 
     public static void resetFile(Repository repository, String filePath) {
         try {
-            String relativeFilePath = repository.makeRelativePath(filePath);
+            String relativeFilePath = Repository.makeRelativePath(filePath);
             repository.getCache().resetFile(relativeFilePath);
             repository.getTrackedDiffs().stream()
                     .filter(diff -> diff.getFileStrPath().equals(relativeFilePath))

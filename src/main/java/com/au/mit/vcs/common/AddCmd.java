@@ -21,7 +21,7 @@ public class AddCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws NotEnoughArgumentsException {
         final List<String> args = commandArgs.getArgs();
         if (args.size() == 0) {
             throw new NotEnoughArgumentsException("Path argument expected");
@@ -40,7 +40,7 @@ public class AddCmd extends Command {
      */
     public static void addFile(Repository repository, String path) {
         try {
-            path = repository.makeRelativePath(path);
+            path = Repository.makeRelativePath(path);
             repository.getCache().addFile(path);
             repository.getTrackedDiffs().add(new Diff(path, repository.getHead(), false));
         } catch (IOException e) {

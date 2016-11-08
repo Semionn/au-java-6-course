@@ -3,6 +3,7 @@ package com.au.mit.vcs.common;
 import com.au.mit.vcs.common.command.args.CommandArgs;
 import com.au.mit.vcs.common.commit.Commit;
 import com.au.mit.vcs.common.exceptions.CommandBuildingException;
+import com.au.mit.vcs.common.exceptions.CommandExecutionException;
 import org.apache.commons.cli.Options;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ public class CleanCmd extends Command {
     }
 
     @Override
-    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) throws CommandBuildingException {
+    public Callable<Void> createTask(Repository repository, CommandArgs commandArgs) {
         return () -> {
             clean(repository);
             return null;
@@ -58,7 +59,7 @@ public class CleanCmd extends Command {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new CommandExecutionException("Command clean is not performed due to IO error", e);
         }
     }
 }
