@@ -11,19 +11,19 @@ public class TorrentTrackerTest {
     @Test
     public void testCommunication() throws InterruptedException {
         final String hostname = "localhost";
-        final int port = 8090;
+        final int port = 8081;
 
         Tracker tracker = new SingleThreadTracker(hostname, port);
-        Runnable clientStart = () -> new ClientImpl().connect(hostname, port);
-        new Thread(tracker::start).start();
+        Thread trackerThread = new Thread(tracker::start);
+        trackerThread.start();
 
-        Thread clientAThread = new Thread(clientStart, "client-A");
+        Thread clientAThread = new Thread(() -> new ClientImpl(port + 1).connect(hostname, port), "client-A");
         clientAThread.start();
-        Thread clientBThread = new Thread(clientStart, "client-B");
+        Thread clientBThread = new Thread(() -> new ClientImpl(port + 2).connect(hostname, port), "client-B");
         clientBThread.start();
 
         clientAThread.join();
         clientBThread.join();
-        tracker.stop();
+        trackerThread.join(2000);
     }
 }

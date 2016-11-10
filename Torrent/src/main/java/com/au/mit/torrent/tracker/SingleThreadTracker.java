@@ -1,19 +1,17 @@
 package com.au.mit.torrent.tracker;
 
 import com.au.mit.torrent.common.exceptions.CommunicationException;
-import com.au.mit.torrent.protocol.ClientDescription;
-import com.au.mit.torrent.protocol.FileDescription;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+import com.au.mit.torrent.common.exceptions.EmptyChannelException;
+import com.au.mit.torrent.common.protocol.ClientDescription;
+import com.au.mit.torrent.common.protocol.FileDescription;
+import com.au.mit.torrent.common.protocol.requests.tracker.CreateNewRequest;
+import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequest;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -21,17 +19,19 @@ import java.util.logging.Logger;
  * Created by semionn on 28.10.16.
  */
 public class SingleThreadTracker implements Tracker {
-    private static final int DEFAULT_PORT = 8099;
-    private final Logger logger = Logger.getLogger("SingleThreadTracker");
+    private final static int DEFAULT_PORT = 8081;
+    private final static Logger logger = Logger.getLogger("SingleThreadTracker");
 
-    private Map<String, FileDescription> fileDescriptions;
-    private Set<ClientDescription> clients;
+    private int filesIdCounter = 0;
+    private final Map<Integer, FileDescription> fileDescriptions;
+    private final Map<SocketAddress, ClientDescription> clients;
     private Selector selector;
-    private final Map<SocketChannel, List> dataMapper = new HashMap<>();
     private final InetSocketAddress listenAddress;
 
     public SingleThreadTracker(String hostname, int port) {
         listenAddress = new InetSocketAddress(hostname, port);
+        clients = new HashMap<>();
+        fileDescriptions = new HashMap<>();
     }
 
     public SingleThreadTracker() {
@@ -39,28 +39,37 @@ public class SingleThreadTracker implements Tracker {
     }
 
     @Override
+    public Map<Integer, FileDescription> getFileDescriptions() {
+        return fileDescriptions;
+    }
+
+    @Override
+    public int addFileDescription(FileDescription fileDescription) {
+        int id = filesIdCounter;
+        fileDescription.setId(id);
+        fileDescriptions.put(id, fileDescription);
+        filesIdCounter++;
+        return id;
+    }
+
+    @Override
     public void start() {
         try {
-            this.selector = Selector.open();
+            selector = Selector.open();
             ServerSocketChannel serverChannel = ServerSocketChannel.open();
             serverChannel.configureBlocking(false);
 
-            // retrieve server socket and bind to port
             serverChannel.socket().bind(listenAddress);
-            serverChannel.register(this.selector, SelectionKey.OP_ACCEPT);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
             logger.info("Server started...");
 
-            while (true) {
-                // wait for events
-                this.selector.select();
+            while (!Thread.interrupted()) {
+                selector.select();
 
-                //work on selected keys
-                Iterator keys = this.selector.selectedKeys().iterator();
+                Iterator keys = selector.selectedKeys().iterator();
                 while (keys.hasNext()) {
                     SelectionKey key = (SelectionKey) keys.next();
-                    // this is necessary to prevent the same key from coming up
-                    // again the next time around.
                     keys.remove();
 
                     if (!key.isValid()) {
@@ -68,9 +77,9 @@ public class SingleThreadTracker implements Tracker {
                     }
 
                     if (key.isAcceptable()) {
-                        this.accept(key);
+                        accept(key);
                     } else if (key.isReadable()) {
-                        this.read(key);
+                        read(key);
                     }
                 }
             }
@@ -80,8 +89,8 @@ public class SingleThreadTracker implements Tracker {
     }
 
     @Override
-    public void stop() {
-
+    public void addRequestHandler(SocketChannel channel, TrackerRequest request) throws ClosedChannelException {
+        channel.register(selector, SelectionKey.OP_READ, request);
     }
 
     private void accept(SelectionKey key) throws IOException {
@@ -90,36 +99,42 @@ public class SingleThreadTracker implements Tracker {
         channel.configureBlocking(false);
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-        logger.info("Connected to: " + remoteAddr);
 
-        // register channel with selector for further IO
-        dataMapper.put(channel, new ArrayList());
-        channel.register(this.selector, SelectionKey.OP_READ);
-    }
-
-    //read from the socket channel
-    private void read(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
-        int numRead = channel.read(buffer);
-
-        if (numRead == -1) {
-            this.dataMapper.remove(channel);
-            Socket socket = channel.socket();
-            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-            logger.info("Connection closed by client: " + remoteAddr);
-            channel.close();
-            key.cancel();
-            return;
+        ClientDescription client;
+        if (clients.containsKey(remoteAddr)) {
+            logger.info("Received command from : " + remoteAddr);
+            client = clients.get(remoteAddr);
+        } else {
+            logger.info("Connected to: " + remoteAddr);
+            client = new ClientDescription(channel);
+            clients.put(remoteAddr, client);
         }
 
-        byte[] data = new byte[numRead];
-        System.arraycopy(buffer.array(), 0, data, 0, numRead);
-        logger.info("Got: " + new String(data));
+        channel.register(selector, SelectionKey.OP_READ, new CreateNewRequest(client));
     }
 
-    private void removeClient(ClientDescription clientDescription) {
-        clientDescription.getFileDescriptions().forEach(fd -> fileDescriptions.remove(fd.getFileName()));
-        clients.remove(clientDescription);
+    private void read(SelectionKey key) throws IOException {
+        SocketChannel channel = (SocketChannel) key.channel();
+        TrackerRequest request = (TrackerRequest) key.attachment();
+        try {
+            if (request.handle(channel, this)) {
+//                logger.info(String.format("Finished request %s", ((TrackerRequest) key.attachment()).getType().name()));
+                key.cancel();
+            }
+        } catch (EmptyChannelException e) {
+            Socket socket = channel.socket();
+            SocketAddress remoteAddr = socket.getRemoteSocketAddress();
+            logger.warning("Connection closed by client: " + remoteAddr);
+            channel.close();
+            key.cancel();
+        } catch (IOException e) {
+            channel.close();
+            key.cancel();
+        }
+    }
+
+    private void removeClient(ClientDescription client) {
+        client.getFileDescriptions().forEach(fd -> fileDescriptions.remove(fd.getId()));
+        clients.entrySet().stream().filter(e -> e.getValue().equals(client)).forEach(clients::remove);
     }
 }
