@@ -64,10 +64,6 @@ public class UploadRequest implements TrackerRequest {
                 return null;
             });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
-//            async.channelInteract(() -> {
-//                channel.shutdownOutput();
-//                return 0;
-//            });
         } catch (AsyncRequestNotCompleteException e) {
             return false;
         }

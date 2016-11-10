@@ -29,27 +29,31 @@ public class AsyncWrapper {
     }
 
     public <T> T wrap(T obj, Supplier<T> supplier) throws AsyncRequestNotCompleteException {
-        currentCounter++;
-        if (currentCounter > maxCounter) {
-            maxCounter = currentCounter;
-        }
-        if (obj == null) {
-            obj = supplier.get();
+        if (currentCounter == maxCounter) {
             if (obj == null) {
-                throw new AsyncRequestNotCompleteException();
+                obj = supplier.get();
+                if (obj == null) {
+                    throw new AsyncRequestNotCompleteException();
+                }
             }
+            maxCounter++;
         }
+        currentCounter++;
         return obj;
     }
 
     public void channelInteract(IOSupplier<Integer> supplier) throws IOException {
-        Integer res = supplier.get();
-        if (res == null) {
-            throw new AsyncRequestNotCompleteException();
+        if (currentCounter == maxCounter) {
+            Integer res = supplier.get();
+            if (res == null) {
+                throw new AsyncRequestNotCompleteException();
+            }
+            if (res == -1) {
+                throw new EmptyChannelException();
+            }
+            maxCounter++;
         }
-        if (res == -1) {
-            throw new EmptyChannelException();
-        }
+        currentCounter++;
     }
 
     @FunctionalInterface
