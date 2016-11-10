@@ -18,7 +18,7 @@ import java.util.logging.Logger;
  * Class for client and tracker sides handling of new client connection case
  */
 public class ListRequest implements TrackerRequest {
-    private final static Logger logger = Logger.getLogger("ListRequest");
+    private final static Logger logger = Logger.getLogger(ListRequest.class.getName());
 
     private ClientDescription client;
 
@@ -65,13 +65,11 @@ public class ListRequest implements TrackerRequest {
 
             SmartBuffer bufferRead = new SmartBuffer(ByteBuffer.allocate(1024));
             int filesCount = bufferRead.getIntSync(channel);
-            System.out.println(filesCount);
             List<FileDescription> result = new ArrayList<>(filesCount);
             while (result.size() < filesCount) {
                 Integer fileID = bufferRead.getIntSync(channel);
                 String fileName = bufferRead.getStringSync(channel);
                 Long fileSize = bufferRead.getLongSync(channel);
-                System.out.println(fileName);
                 result.add(new FileDescription(fileID, fileName, fileSize));
             }
             return result;

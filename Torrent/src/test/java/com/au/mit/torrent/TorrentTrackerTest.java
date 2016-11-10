@@ -5,11 +5,14 @@ import com.au.mit.torrent.tracker.SingleThreadTracker;
 import com.au.mit.torrent.tracker.Tracker;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+
 
 public class TorrentTrackerTest {
 
     @Test
-    public void testCommunication() throws InterruptedException {
+    public void testCommunication() throws InterruptedException, IOException {
         final String hostname = "localhost";
         final int port = 8081;
 
@@ -17,9 +20,26 @@ public class TorrentTrackerTest {
         Thread trackerThread = new Thread(tracker::start);
         trackerThread.start();
 
-        Thread clientAThread = new Thread(() -> new ClientImpl(port + 1).connect(hostname, port), "client-A");
+        File fileA = File.createTempFile("testA", "txt");
+        fileA.deleteOnExit();
+
+        File fileB = File.createTempFile("testB", "txt");
+        fileB.deleteOnExit();
+
+        final ClientImpl clientA = new ClientImpl(port + 1);
+        Thread clientAThread = new Thread(() -> {
+            clientA.connect(hostname, port);
+            clientA.uploadFile(fileA.getAbsolutePath());
+            clientA.updateTrackerFiles();
+        }, "client-A");
         clientAThread.start();
-        Thread clientBThread = new Thread(() -> new ClientImpl(port + 2).connect(hostname, port), "client-B");
+
+        final ClientImpl clientB = new ClientImpl(port + 2);
+        Thread clientBThread = new Thread(() -> {
+            clientB.connect(hostname, port);
+            clientB.uploadFile(fileB.getAbsolutePath());
+            clientB.updateTrackerFiles();
+        }, "client-B");
         clientBThread.start();
 
         clientAThread.join();

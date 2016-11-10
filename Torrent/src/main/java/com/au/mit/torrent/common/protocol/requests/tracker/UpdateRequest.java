@@ -16,7 +16,7 @@ import java.util.logging.Logger;
  * Class for client and tracker sides handling of new client connection case
  */
 public class UpdateRequest implements TrackerRequest {
-    private final static Logger logger = Logger.getLogger("UpdateRequest");
+    private final static Logger logger = Logger.getLogger(UpdateRequest.class.getName());
 
     private ClientDescription client;
     private ByteBuffer buffer;

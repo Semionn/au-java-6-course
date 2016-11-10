@@ -1,6 +1,8 @@
 package com.au.mit.torrent.client;
 
 import com.au.mit.torrent.common.exceptions.CommunicationException;
+import com.au.mit.torrent.common.exceptions.DisconnectException;
+import com.au.mit.torrent.common.exceptions.RequestException;
 import com.au.mit.torrent.common.protocol.FileDescription;
 import com.au.mit.torrent.common.protocol.requests.tracker.ListRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.UploadRequest;
@@ -10,9 +12,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -24,10 +27,13 @@ import java.util.stream.Collectors;
 public class ClientImpl implements Client {
     private final static int CONNECTION_RETRIES = 3;
     private final static int RETRY_TIME_MS = 1000;
-    private final static Logger logger = Logger.getLogger("ClientImpl");
+    private final static Logger logger = Logger.getLogger(ClientImpl.class.getName());
 
     private final Set<FileDescription> localFiles;
     private final int localPort;
+    private List<FileDescription> trackerFiles = new ArrayList<>();
+    private String trackerHostname = null;
+    private Integer trackerPort = null;
 
     public ClientImpl(int localPort) {
         this(localPort, new HashSet<>());
@@ -45,8 +51,9 @@ public class ClientImpl implements Client {
     }
 
     public void connect(String hostname, int port) {
-        uploadFile(hostname, port);
-        getFilesList(hostname, port);
+        trackerHostname = hostname;
+        trackerPort = port;
+        updateTrackerFiles();
     }
 
     private <R> R sendRequest(String hostname, int port, Function<SocketChannel, R> request) {
@@ -73,13 +80,43 @@ public class ClientImpl implements Client {
         return null;
     }
 
-    public void uploadFile(String hostname, int port) {
-        String fileName = "test.txt";
-        Integer id = sendRequest(hostname, port, channel -> UploadRequest.send(channel, fileName, 10L));
-        System.out.println(String.format("File %s id: %d", fileName, id));
+    public void uploadFile(String filePath) {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new RequestException(String.format("File '%s' not found", filePath));
+        }
+        uploadFile(new FileDescription(file.getName(), file.length()));
     }
 
-    public void getFilesList(String hostname, int port) {
-        sendRequest(hostname, port, ListRequest::send);
+    private void uploadFile(FileDescription fileDescription) {
+        checkConnection();
+        final String fileName = fileDescription.getName();
+        final Long fileSize = fileDescription.getSize();
+        Integer id = sendRequest(trackerHostname, trackerPort, channel -> UploadRequest.send(channel, fileName, fileSize));
+        logger.info(String.format("File %s uploaded with id: %d", fileName, id));
+    }
+
+    public void updateTrackerFiles() {
+        checkConnection();
+        trackerFiles = sendRequest(trackerHostname, trackerPort, ListRequest::send);
+        logger.info(String.format("Tracker files count: %d", trackerFiles.size()));
+        logger.info("ID; Name; Size; Seeds");
+        for (FileDescription file : trackerFiles) {
+            logger.info(String.format("%d; %s; %d; %d", file.getId(), file.getName(), file.getSize(), file.getSids().size()));
+        }
+    }
+
+    public List<FileDescription> getTrackerFiles() {
+        return trackerFiles;
+    }
+
+    public void checkConnection() {
+        if (!isConnected()) {
+            throw new DisconnectException("Client is not connected to tracker");
+        }
+    }
+
+    public boolean isConnected() {
+        return trackerHostname != null && trackerPort != null;
     }
 }

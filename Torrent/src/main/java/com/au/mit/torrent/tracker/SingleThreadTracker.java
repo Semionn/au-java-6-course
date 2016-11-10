@@ -20,7 +20,7 @@ import java.util.logging.Logger;
  */
 public class SingleThreadTracker implements Tracker {
     private final static int DEFAULT_PORT = 8081;
-    private final static Logger logger = Logger.getLogger("SingleThreadTracker");
+    private final static Logger logger = Logger.getLogger(SingleThreadTracker.class.getName());
 
     private int filesIdCounter = 0;
     private final Map<Integer, FileDescription> fileDescriptions;
