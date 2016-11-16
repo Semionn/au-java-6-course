@@ -2,10 +2,11 @@ package com.au.mit.ftp.server;
 
 import com.au.mit.ftp.client.Client;
 import com.au.mit.ftp.common.exceptions.CommunicationException;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -19,6 +20,9 @@ import static org.junit.Assert.*;
 public class ServerTest {
     final int serverPortNumber = 33094;
     final int connectionRetriesCount = 10;
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
     public void testList() throws Exception {
@@ -49,6 +53,14 @@ public class ServerTest {
 
     @Test
     public void testGet() throws Exception {
+        final String tempFileName = "temp.txt";
+        final String fileContent = "Hello world!";
+        temporaryFolder.create();
+        final File tempFile = temporaryFolder.newFile(tempFileName);
+        BufferedWriter bw = new BufferedWriter(new FileWriter(tempFile));
+        bw.write(fileContent);
+        bw.close();
+
         Server server = new Server(serverPortNumber);
         Client client = new Client(serverPortNumber, "localhost");
         server.start();
@@ -62,9 +74,8 @@ public class ServerTest {
         }
         assertTrue(client.isConnected());
         client.executeList("");
-        String path = "test/temp.txt";
-        client.executeGet(path);
-        assertEquals(Arrays.asList("Hello world!"), Files.readAllLines(Paths.get(path)));
+        client.executeGet(tempFile.getAbsolutePath());
+        assertEquals(Arrays.asList(fileContent), Files.readAllLines(Paths.get(tempFileName)));
         client.disconnect();
         server.stop();
     }

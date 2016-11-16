@@ -63,6 +63,7 @@ public class CommandRunner {
         try {
             if (!targetFile.exists()) {
                 out.writeInt(0);
+                out.writeLong(0);
                 return;
             }
             out.writeLong(targetFile.length());
