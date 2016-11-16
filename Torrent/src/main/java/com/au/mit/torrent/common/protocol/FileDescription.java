@@ -3,9 +3,6 @@ package com.au.mit.torrent.common.protocol;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Created by semionn on 28.10.16.
- */
 public class FileDescription {
     private int id;
     private String name;
@@ -19,6 +16,7 @@ public class FileDescription {
     public FileDescription(int id, String name, long size) {
         this.id = id;
         this.name = name;
+        this.size = size;
     }
 
     public void setId(int id) {

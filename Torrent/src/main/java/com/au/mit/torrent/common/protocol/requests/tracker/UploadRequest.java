@@ -13,9 +13,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.logging.Logger;
 
-/**
- * Class for client and tracker sides handling of new client connection case
- */
 public class UploadRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(UploadRequest.class.getName());
 
@@ -31,7 +28,7 @@ public class UploadRequest implements TrackerRequest {
 
     public UploadRequest(ClientDescription client) {
         this.client = client;
-        buffer = new SmartBuffer(ByteBuffer.allocate(1024));
+        buffer = SmartBuffer.allocate(1024);
         async = new AsyncWrapper();
         writeBuffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES));
     }
@@ -51,17 +48,13 @@ public class UploadRequest implements TrackerRequest {
         try {
             async.resetCounter();
             async.channelInteract(() -> buffer.readFrom(channel));
-            fileName = async.wrap(fileName, () -> buffer.getString());
-            fileSize = async.wrap(fileSize, () -> buffer.getLong());
-            fileDescription = async.wrap(fileDescription, () -> new FileDescription(fileName, fileSize));
-            async.wrap(() -> {
-                fileDescription.addSid(client);
-                return null;
-            });
-            fileID = async.wrap(fileID, () -> tracker.addFileDescription(fileDescription));
+            async.wrap(() -> fileName = buffer.getString());
+            async.wrap(() -> fileSize = buffer.getLong());
+            async.wrap(() -> fileDescription = new FileDescription(fileName, fileSize));
+            async.wrap(() -> fileID = tracker.addFileDescription(fileDescription));
             async.wrap(() -> {
                 writeBuffer.putInt(fileID);
-                return null;
+                return true;
             });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
         } catch (AsyncRequestNotCompleteException e) {
@@ -70,18 +63,14 @@ public class UploadRequest implements TrackerRequest {
         return true;
     }
 
-    /**
-     * Sends
-     * @param channel channel for sending port
-     */
     public static int send(SocketChannel channel, String fileName, Long fileSize) {
         try {
-            SmartBuffer bufferWrite = new SmartBuffer(ByteBuffer.allocate(1024));
+            SmartBuffer bufferWrite = SmartBuffer.allocate(1024);
             bufferWrite.putInt(TrackerRequestType.UPLOAD.getNum());
             bufferWrite.putString(fileName);
             bufferWrite.putLong(fileSize);
             bufferWrite.writeSync(channel);
-            SmartBuffer bufferRead = new SmartBuffer(ByteBuffer.allocate(1024));
+            SmartBuffer bufferRead = SmartBuffer.allocate(1024);
             return bufferRead.getIntSync(channel);
         } catch (IOException e) {
             throw new CommunicationException(e);

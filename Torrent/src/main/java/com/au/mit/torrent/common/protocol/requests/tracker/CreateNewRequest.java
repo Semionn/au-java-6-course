@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 /**
- * Created by semionn on 09.11.16.
+ * Class for client and tracker sides handling of new client connection case
  */
 public class CreateNewRequest implements TrackerRequest {
 
@@ -51,6 +51,7 @@ public class CreateNewRequest implements TrackerRequest {
                     request = new UploadRequest(client);
                     break;
                 case SOURCES:
+                    request = new SourceRequest(client);
                     break;
                 case UPDATE:
                     request = new UpdateRequest(client);

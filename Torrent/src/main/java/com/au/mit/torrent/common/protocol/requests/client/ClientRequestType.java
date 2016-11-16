@@ -1,8 +1,5 @@
 package com.au.mit.torrent.common.protocol.requests.client;
 
-/**
- * Created by semionn on 09.11.16.
- */
 public enum ClientRequestType {
     STAT(1),
     GET(2);

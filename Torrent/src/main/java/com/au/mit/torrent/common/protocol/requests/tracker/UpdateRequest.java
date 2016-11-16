@@ -1,29 +1,36 @@
 package com.au.mit.torrent.common.protocol.requests.tracker;
 
+import com.au.mit.torrent.common.AsyncWrapper;
+import com.au.mit.torrent.common.SmartBuffer;
+import com.au.mit.torrent.common.exceptions.AsyncRequestNotCompleteException;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
+import com.au.mit.torrent.common.protocol.FileDescription;
 import com.au.mit.torrent.tracker.Tracker;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
-/**
- * Class for client and tracker sides handling of new client connection case
- */
 public class UpdateRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(UpdateRequest.class.getName());
 
     private ClientDescription client;
-    private ByteBuffer buffer;
+    private SmartBuffer buffer;
+    private AsyncWrapper async;
+    private Short clientPort = null;
+    private Integer filesCount = null;
+    private Set<Integer> fileIds = new HashSet<>();
+    private Boolean updated = null;
 
     public UpdateRequest(ClientDescription client) {
         this.client = client;
-        buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer = SmartBuffer.allocate(1024);
+        async = new AsyncWrapper();
     }
 
     @Override
@@ -38,32 +45,46 @@ public class UpdateRequest implements TrackerRequest {
 
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
-        throw new NotImplementedException();
-//        int numRead = channel.read(buffer);
-//        if (numRead == -1) {
-//            throw new IOException();
-//        }
-//        final IntBuffer intBuffer = buffer.asIntBuffer();
-//        if (intBuffer.hasArray() && intBuffer.array().length == 1) {
-//            int clientPort = intBuffer.get(0);
-//            client.setLocalPort(clientPort);
-//        }
-//        return true;
+        try {
+            async.resetCounter();
+            async.channelInteract(() -> buffer.readFrom(channel));
+            async.wrap(() -> clientPort = buffer.getShort());
+            async.wrap(() -> {
+                client.setLocalPort(clientPort);
+                return true;
+            });
+            async.wrap(() -> filesCount = buffer.getInt());
+            async.forloop(0, filesCount, new AsyncWrapper.IOFunction[] {
+                    (i) -> fileIds.add(buffer.getInt()),
+                    (i) -> buffer.readFrom(channel)
+            });
+            async.wrap(() -> updated = tracker.updateSid(client, fileIds));
+            async.wrap(() -> {
+                buffer.putBool(updated);
+                return true;
+            });
+            async.channelInteract(() -> buffer.writeTo(channel));
+        } catch (AsyncRequestNotCompleteException e) {
+            return false;
+        }
+        return true;
     }
 
-    /**
-     * Sends local port to tracker with specified SocketChannel
-     * @param channel channel for sending port
-     * @param localPort local port for receiving incoming queries
-     */
-    public static void send(SocketChannel channel, int localPort) {
-        throw new NotImplementedException();
-//        try {
-//            ByteBuffer bufferPort = ByteBuffer.allocate(Integer.BYTES);
-//            bufferPort.asIntBuffer().put(localPort);
-//            channel.write(bufferPort);
-//        } catch (IOException e) {
-//            throw new CommunicationException(e);
-//        }
+    public static boolean send(SocketChannel channel, short localPort, Set<FileDescription> localFiles) {
+        try {
+            SmartBuffer buffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES*4));
+            buffer.putInt(TrackerRequestType.UPDATE.getNum());
+            buffer.putShort(localPort);
+            buffer.putInt(localFiles.size());
+            for (FileDescription file : localFiles) {
+                buffer.putInt(file.getId());
+                buffer.writeSync(channel);
+            }
+            buffer.writeSync(channel);
+            return buffer.getBoolSync(channel);
+        } catch (IOException e) {
+            throw new CommunicationException(e);
+        }
+
     }
 }

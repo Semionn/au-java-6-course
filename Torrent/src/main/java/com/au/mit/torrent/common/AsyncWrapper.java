@@ -6,9 +6,6 @@ import com.au.mit.torrent.common.exceptions.EmptyChannelException;
 import java.io.IOException;
 import java.util.function.Supplier;
 
-/**
- * Created by semionn on 10.11.16.
- */
 public class AsyncWrapper {
     private int maxCounter = 0;
     private int currentCounter = 0;
@@ -17,29 +14,26 @@ public class AsyncWrapper {
         currentCounter = 0;
     }
 
-    public <T> void wrap(Supplier<T> supplier) {
+    public <T> void wrap(Supplier<T> supplier) throws AsyncRequestNotCompleteException {
         if (currentCounter == maxCounter) {
             T res = supplier.get();
             if (res == null) {
-                return;
+                throw new AsyncRequestNotCompleteException();
             }
             maxCounter++;
         }
         currentCounter++;
     }
 
-    public <T> T wrap(T obj, Supplier<T> supplier) throws AsyncRequestNotCompleteException {
+    public <T, R> void wrap(T arg, IOFunction<T, R> function) throws IOException {
         if (currentCounter == maxCounter) {
-            if (obj == null) {
-                obj = supplier.get();
-                if (obj == null) {
-                    throw new AsyncRequestNotCompleteException();
-                }
+            R res = function.apply(arg);
+            if (res == null) {
+                throw new AsyncRequestNotCompleteException();
             }
             maxCounter++;
         }
         currentCounter++;
-        return obj;
     }
 
     public void channelInteract(IOSupplier<Integer> supplier) throws IOException {
@@ -56,9 +50,31 @@ public class AsyncWrapper {
         currentCounter++;
     }
 
+    public <R> void forloop(int start, int end, IOFunction<Integer, R>[] functions) throws IOException {
+        if (maxCounter - currentCounter > (end - start) * functions.length) {
+            currentCounter += end - start;
+            return;
+        }
+        int i = (maxCounter - currentCounter) / functions.length + start;
+        int j = (maxCounter - currentCounter) % functions.length;
+        currentCounter = maxCounter;
+        for (; i < end; i++) {
+            for (; j < functions.length; j++) {
+                wrap(i, functions[j]);
+                currentCounter++;
+                maxCounter++;
+            }
+            j = 0;
+        }
+    }
+
     @FunctionalInterface
     public interface IOSupplier<T> {
         T get() throws IOException;
     }
 
+    @FunctionalInterface
+    public interface IOFunction<T, R> {
+        R apply(T t) throws IOException;
+    }
 }

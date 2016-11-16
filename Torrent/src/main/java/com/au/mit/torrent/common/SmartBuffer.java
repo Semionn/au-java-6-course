@@ -12,6 +12,10 @@ public class SmartBuffer {
     private ByteBuffer buffer;
     private boolean isReadState = false;
 
+    public static SmartBuffer allocate(int capacity) {
+        return new SmartBuffer(ByteBuffer.allocate(capacity));
+    }
+
     public SmartBuffer(ByteBuffer buffer) {
         this.buffer = buffer;
     }
@@ -52,6 +56,27 @@ public class SmartBuffer {
         return !buffer.hasRemaining() && numRead >= 0;
     }
 
+    public void putByte(byte value) {
+        setWriteState();
+        buffer.put(value);
+    }
+
+    public Byte getByte() {
+        setReadState();
+        if (buffer.remaining() < Byte.BYTES) {
+            return null;
+        }
+        return buffer.get();
+    }
+
+    public Byte getByteSync(SocketChannel channel) throws IOException {
+        Byte result;
+        while ((result = getByte()) == null) {
+            readFrom(channel);
+        }
+        return result;
+    }
+
     public void putInt(int value) {
         setWriteState();
         buffer.putInt(value);
@@ -68,6 +93,48 @@ public class SmartBuffer {
     public Integer getIntSync(SocketChannel channel) throws IOException {
         Integer result;
         while ((result = getInt()) == null) {
+            readFrom(channel);
+        }
+        return result;
+    }
+
+    public void putShort(short value) {
+        setWriteState();
+        buffer.putShort(value);
+    }
+
+    public Short getShort() {
+        setReadState();
+        if (buffer.remaining() < Short.BYTES) {
+            return null;
+        }
+        return buffer.getShort();
+    }
+
+    public Short getShortSync(SocketChannel channel) throws IOException {
+        Short result;
+        while ((result = getShort()) == null) {
+            readFrom(channel);
+        }
+        return result;
+    }
+
+    public void putBool(boolean value) {
+        setWriteState();
+        buffer.put(value ? (byte) 1 : 0);
+    }
+
+    public Boolean getBool() {
+        setReadState();
+        if (buffer.remaining() < Byte.BYTES) {
+            return null;
+        }
+        return buffer.get() == 1;
+    }
+
+    public Boolean getBoolSync(SocketChannel channel) throws IOException {
+        Boolean result;
+        while ((result = getBool()) == null) {
             readFrom(channel);
         }
         return result;

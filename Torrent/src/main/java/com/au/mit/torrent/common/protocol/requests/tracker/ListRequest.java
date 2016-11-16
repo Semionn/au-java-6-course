@@ -1,5 +1,6 @@
 package com.au.mit.torrent.common.protocol.requests.tracker;
 
+import com.au.mit.torrent.common.AsyncWrapper;
 import com.au.mit.torrent.common.SmartBuffer;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
@@ -14,13 +15,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-/**
- * Class for client and tracker sides handling of new client connection case
- */
 public class ListRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(ListRequest.class.getName());
 
     private ClientDescription client;
+    private List<FileDescription> fileDescriptions = null;
+    private FileDescription fileDescription = null;
+    private SmartBuffer buffer = SmartBuffer.allocate(1024);
+    private AsyncWrapper async = new AsyncWrapper();
 
     public ListRequest(ClientDescription client) {
         this.client = client;
@@ -38,32 +40,34 @@ public class ListRequest implements TrackerRequest {
 
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
-        Map<Integer, FileDescription> fileDescriptions = tracker.getFileDescriptions();
-        SmartBuffer buffer = new SmartBuffer(ByteBuffer.allocate(1024));
-        buffer.putInt(fileDescriptions.size());
-        buffer.writeSync(channel);
-        for (FileDescription fileDescription : fileDescriptions.values()) {
-            buffer.putInt(fileDescription.getId());
-            buffer.putString(fileDescription.getName());
-            buffer.putLong(fileDescription.getSize());
-            buffer.writeSync(channel);
-        }
-        channel.shutdownOutput();
+        async.wrap(() -> fileDescriptions = new ArrayList<>(tracker.getFileDescriptions().values()));
+        async.wrap(() -> {
+            buffer.putInt(fileDescriptions.size());
+            return true;
+        });
+        async.channelInteract(() -> buffer.writeTo(channel));
+        async.forloop(0, fileDescriptions.size(), new AsyncWrapper.IOFunction[] {
+                (i) -> fileDescription = fileDescriptions.get((Integer) i),
+                (i) -> { buffer.putInt(fileDescription.getId()); return true; },
+                (i) -> { buffer.putString(fileDescription.getName()); return true; },
+                (i) -> { buffer.putLong(fileDescription.getSize()); return true; },
+                (i) -> { buffer.writeTo(channel); return true; }
+        });
+        async.channelInteract(() -> buffer.writeTo(channel));
         return true;
     }
 
     /**
-     * Sends request
+     * Sends List request to tracker
      * @param channel channel for sending port
      */
     public static List<FileDescription> send(SocketChannel channel) {
         try {
-            ByteBuffer bufferWrite = ByteBuffer.allocate(Integer.BYTES);
+            SmartBuffer bufferWrite = SmartBuffer.allocate(Integer.BYTES);
             bufferWrite.putInt(TrackerRequestType.LIST.getNum());
-            bufferWrite.flip();
-            channel.write(bufferWrite);
+            bufferWrite.writeSync(channel);
 
-            SmartBuffer bufferRead = new SmartBuffer(ByteBuffer.allocate(1024));
+            SmartBuffer bufferRead = SmartBuffer.allocate(1024);
             int filesCount = bufferRead.getIntSync(channel);
             List<FileDescription> result = new ArrayList<>(filesCount);
             while (result.size() < filesCount) {

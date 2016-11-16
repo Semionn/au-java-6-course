@@ -1,10 +1,13 @@
 package com.au.mit.torrent.client;
 
+import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.exceptions.DisconnectException;
 import com.au.mit.torrent.common.exceptions.RequestException;
 import com.au.mit.torrent.common.protocol.FileDescription;
 import com.au.mit.torrent.common.protocol.requests.tracker.ListRequest;
+import com.au.mit.torrent.common.protocol.requests.tracker.SourceRequest;
+import com.au.mit.torrent.common.protocol.requests.tracker.UpdateRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.UploadRequest;
 
 import java.io.File;
@@ -30,16 +33,16 @@ public class ClientImpl implements Client {
     private final static Logger logger = Logger.getLogger(ClientImpl.class.getName());
 
     private final Set<FileDescription> localFiles;
-    private final int localPort;
+    private final short localPort;
     private List<FileDescription> trackerFiles = new ArrayList<>();
     private String trackerHostname = null;
     private Integer trackerPort = null;
 
-    public ClientImpl(int localPort) {
+    public ClientImpl(short localPort) {
         this(localPort, new HashSet<>());
     }
 
-    public ClientImpl(int localPort, Set<Path> filesPaths) {
+    public ClientImpl(short localPort, Set<Path> filesPaths) {
         this.localPort = localPort;
         localFiles = filesPaths.stream()
                 .map(path -> new FileDescription(path.getFileName().toString(), new File(path.toString()).length()))
@@ -53,7 +56,56 @@ public class ClientImpl implements Client {
     public void connect(String hostname, int port) {
         trackerHostname = hostname;
         trackerPort = port;
-        updateTrackerFiles();
+        updateRequest();
+        listRequest();
+    }
+
+    public void updateRequest() {
+        sendRequest(trackerHostname, trackerPort, (channel) -> {
+            if (!UpdateRequest.send(channel, localPort, localFiles)) {
+                throw new RequestException("Update request failed");
+            }
+            return true;
+        });
+    }
+
+    public void uploadFileRequest(String filePath) {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new RequestException(String.format("File '%s' not found", filePath));
+        }
+        uploadFileRequest(new FileDescription(file.getName(), file.length()));
+        updateRequest();
+    }
+
+    public void listRequest() {
+        checkConnection();
+        trackerFiles = sendRequest(trackerHostname, trackerPort, ListRequest::send);
+        logger.info(getTrackerFilesDescription());
+    }
+
+    public List<FileDescription> getTrackerFiles() {
+        return trackerFiles;
+    }
+
+    public void checkConnection() {
+        if (!isConnected()) {
+            throw new DisconnectException("Client is not connected to tracker");
+        }
+    }
+
+    public boolean isConnected() {
+        return trackerHostname != null && trackerPort != null;
+    }
+
+    private void uploadFileRequest(FileDescription fileDescription) {
+        checkConnection();
+        final String fileName = fileDescription.getName();
+        final Long fileSize = fileDescription.getSize();
+        Integer id = sendRequest(trackerHostname, trackerPort, channel -> UploadRequest.send(channel, fileName, fileSize));
+        logger.info(String.format("File %s uploaded with id: %d", fileName, id));
+        fileDescription.setId(id);
+        localFiles.add(fileDescription);
     }
 
     private <R> R sendRequest(String hostname, int port, Function<SocketChannel, R> request) {
@@ -80,43 +132,21 @@ public class ClientImpl implements Client {
         return null;
     }
 
-    public void uploadFile(String filePath) {
-        File file = new File(filePath);
-        if (!file.exists()) {
-            throw new RequestException(String.format("File '%s' not found", filePath));
-        }
-        uploadFile(new FileDescription(file.getName(), file.length()));
-    }
-
-    private void uploadFile(FileDescription fileDescription) {
-        checkConnection();
-        final String fileName = fileDescription.getName();
-        final Long fileSize = fileDescription.getSize();
-        Integer id = sendRequest(trackerHostname, trackerPort, channel -> UploadRequest.send(channel, fileName, fileSize));
-        logger.info(String.format("File %s uploaded with id: %d", fileName, id));
-    }
-
-    public void updateTrackerFiles() {
-        checkConnection();
-        trackerFiles = sendRequest(trackerHostname, trackerPort, ListRequest::send);
-        logger.info(String.format("Tracker files count: %d", trackerFiles.size()));
-        logger.info("ID; Name; Size; Seeds");
+    private String getTrackerFilesDescription() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(String.format("Tracker files count: %d%n", trackerFiles.size()));
+        stringBuilder.append(String.format("ID; Name; Size; Seeds%n"));
         for (FileDescription file : trackerFiles) {
-            logger.info(String.format("%d; %s; %d; %d", file.getId(), file.getName(), file.getSize(), file.getSids().size()));
+            stringBuilder.append(String.format("%d; %s; %d; %d%n", file.getId(),
+                    file.getName(), file.getSize(), file.getSids().size()));
+            Set<ClientAddress> sids = sendRequest(trackerHostname, trackerPort,
+                    (channel) -> SourceRequest.send(channel, file.getId()));
+            if (sids != null) {
+                for (ClientAddress sid : sids) {
+                    stringBuilder.append(String.format("\tSid: %s:%s%n", sid.getHostIP(), sid.getPort()));
+                }
+            }
         }
-    }
-
-    public List<FileDescription> getTrackerFiles() {
-        return trackerFiles;
-    }
-
-    public void checkConnection() {
-        if (!isConnected()) {
-            throw new DisconnectException("Client is not connected to tracker");
-        }
-    }
-
-    public boolean isConnected() {
-        return trackerHostname != null && trackerPort != null;
+        return stringBuilder.toString();
     }
 }

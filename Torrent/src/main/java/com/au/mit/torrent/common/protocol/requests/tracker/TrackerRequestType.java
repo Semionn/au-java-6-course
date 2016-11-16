@@ -2,9 +2,6 @@ package com.au.mit.torrent.common.protocol.requests.tracker;
 
 import java.util.Arrays;
 
-/**
- * Created by semionn on 09.11.16.
- */
 public enum TrackerRequestType {
     CREATE_REQUEST(0),
     LIST(1),

@@ -1,10 +1,11 @@
 package com.au.mit.torrent.tracker;
 
-/**
- * Created by semionn on 27.10.16.
- */
 public class TorrentTrackerApp {
-    public static void main(String[] args) {
+    private static final String HOSTNAME = "localhost";
+    private static final int PORT = 8081;
 
+    public static void main(String[] args) {
+        Tracker tracker = new SingleThreadTracker(HOSTNAME, PORT);
+        tracker.start();
     }
 }

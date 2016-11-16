@@ -1,5 +1,6 @@
 package com.au.mit.torrent.tracker;
 
+import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.exceptions.EmptyChannelException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
@@ -7,6 +8,7 @@ import com.au.mit.torrent.common.protocol.FileDescription;
 import com.au.mit.torrent.common.protocol.requests.tracker.CreateNewRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequest;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -15,16 +17,13 @@ import java.nio.channels.*;
 import java.util.*;
 import java.util.logging.Logger;
 
-/**
- * Created by semionn on 28.10.16.
- */
 public class SingleThreadTracker implements Tracker {
     private final static int DEFAULT_PORT = 8081;
     private final static Logger logger = Logger.getLogger(SingleThreadTracker.class.getName());
 
     private int filesIdCounter = 0;
     private final Map<Integer, FileDescription> fileDescriptions;
-    private final Map<SocketAddress, ClientDescription> clients;
+    private final Map<ClientAddress, ClientDescription> clients;
     private Selector selector;
     private final InetSocketAddress listenAddress;
 
@@ -93,23 +92,27 @@ public class SingleThreadTracker implements Tracker {
         channel.register(selector, SelectionKey.OP_READ, request);
     }
 
+    @Override
+    public boolean updateSid(ClientDescription client, Set<Integer> fileIds) {
+        clients.put(client.getAddress(), client);
+        for (Integer fileId : fileIds) {
+            if (!fileDescriptions.containsKey(fileId)) {
+                return false;
+            }
+            client.addFile(fileDescriptions.get(fileId));
+        }
+        return true;
+    }
+
     private void accept(SelectionKey key) throws IOException {
         ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
         SocketChannel channel = serverChannel.accept();
         channel.configureBlocking(false);
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
+        logger.info("Connected to: " + remoteAddr);
 
-        ClientDescription client;
-        if (clients.containsKey(remoteAddr)) {
-            logger.info("Received command from : " + remoteAddr);
-            client = clients.get(remoteAddr);
-        } else {
-            logger.info("Connected to: " + remoteAddr);
-            client = new ClientDescription(channel);
-            clients.put(remoteAddr, client);
-        }
-
+        ClientDescription client = new ClientDescription(channel);
         channel.register(selector, SelectionKey.OP_READ, new CreateNewRequest(client));
     }
 

@@ -26,19 +26,19 @@ public class TorrentTrackerTest {
         File fileB = File.createTempFile("testB", "txt");
         fileB.deleteOnExit();
 
-        final ClientImpl clientA = new ClientImpl(port + 1);
+        final ClientImpl clientA = new ClientImpl((short) (port + 1));
         Thread clientAThread = new Thread(() -> {
             clientA.connect(hostname, port);
-            clientA.uploadFile(fileA.getAbsolutePath());
-            clientA.updateTrackerFiles();
+            clientA.uploadFileRequest(fileA.getAbsolutePath());
+            clientA.listRequest();
         }, "client-A");
         clientAThread.start();
 
-        final ClientImpl clientB = new ClientImpl(port + 2);
+        final ClientImpl clientB = new ClientImpl((short) (port + 2));
         Thread clientBThread = new Thread(() -> {
             clientB.connect(hostname, port);
-            clientB.uploadFile(fileB.getAbsolutePath());
-            clientB.updateTrackerFiles();
+            clientB.uploadFileRequest(fileB.getAbsolutePath());
+            clientB.listRequest();
         }, "client-B");
         clientBThread.start();
 

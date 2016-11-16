@@ -1,40 +1,51 @@
 package com.au.mit.torrent.common.protocol;
 
+import com.au.mit.torrent.common.ClientAddress;
+
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Created by semionn on 28.10.16.
- */
 public class ClientDescription {
     private SocketChannel channel;
-    private int localPort;
+    private ClientAddress clientAddress;
     private Set<FileDescription> fileDescriptions;
 
     public ClientDescription(SocketChannel socketChannel) {
-        this.channel = socketChannel;
+        channel = socketChannel;
         fileDescriptions = new HashSet<>();
+        final String host = ((InetSocketAddress) socketChannel.socket().getRemoteSocketAddress()).getAddress().getHostAddress();
+        clientAddress = new ClientAddress(host);
     }
 
     public SocketChannel getChannel() {
         return channel;
     }
 
-    public InetAddress getInetAddress() {
-        return channel.socket().getInetAddress();
+    public ClientAddress getAddress() {
+        return clientAddress;
     }
 
     public Set<FileDescription> getFileDescriptions() {
         return fileDescriptions;
     }
 
-    public int getLocalPort() {
-        return localPort;
+    public void clearFileDescriptions() {
+        fileDescriptions = new HashSet<>();
     }
 
-    public void setLocalPort(int localPort) {
-        this.localPort = localPort;
+    public void addFile(FileDescription fileDescription) {
+        fileDescriptions.add(fileDescription);
+        fileDescription.addSid(this);
+    }
+
+    public int getLocalPort() {
+        return clientAddress.getPort();
+    }
+
+    public void setLocalPort(short localPort) {
+        clientAddress.setPort(localPort);
     }
 }
