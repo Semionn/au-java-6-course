@@ -143,7 +143,7 @@ public class ClientImpl implements Client {
                     (channel) -> SourceRequest.send(channel, file.getId()));
             if (sids != null) {
                 for (ClientAddress sid : sids) {
-                    stringBuilder.append(String.format("\tSid: %s:%s%n", sid.getHostIP(), sid.getPort()));
+                    stringBuilder.append(String.format("\tSeed: %s:%s%n", sid.getHostIP(), sid.getPort()));
                 }
             }
         }
