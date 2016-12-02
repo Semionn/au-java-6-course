@@ -28,7 +28,11 @@ public class ClientAddress {
     }
 
     public byte getIPByte(byte num) {
-        return Byte.valueOf(hostIP.split("\\.")[num]);
+        return Byte.valueOf((byte)(Integer.valueOf(hostIP.split("\\.")[num])-128));
+    }
+
+    public static int IPByteToInt(byte b) {
+        return (int) b + 128;
     }
 
     @Override

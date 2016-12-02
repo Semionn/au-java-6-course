@@ -2,7 +2,8 @@ package com.au.mit.torrent.common.protocol.requests.tracker;
 
 import com.au.mit.torrent.common.AsyncWrapper;
 import com.au.mit.torrent.common.SmartBuffer;
-import com.au.mit.torrent.common.exceptions.AsyncRequestNotCompleteException;
+import com.au.mit.torrent.common.exceptions.AsyncReadRequestNotCompleteException;
+import com.au.mit.torrent.common.exceptions.AsyncWriteRequestNotCompleteException;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.common.protocol.FileDescription;
@@ -13,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class UpdateRequest implements TrackerRequest {
@@ -48,23 +48,27 @@ public class UpdateRequest implements TrackerRequest {
         try {
             async.resetCounter();
             async.channelInteract(() -> buffer.readFrom(channel));
-            async.wrap(() -> clientPort = buffer.getShort());
-            async.wrap(() -> {
+            async.wrapRead(() -> clientPort = buffer.getShort());
+            async.wrapRead(() -> {
                 client.setLocalPort(clientPort);
                 return true;
             });
-            async.wrap(() -> filesCount = buffer.getInt());
-            async.forloop(0, filesCount, new AsyncWrapper.IOFunction[] {
+            async.wrapRead(() -> filesCount = buffer.getInt());
+            async.forloopRead(0, filesCount, new AsyncWrapper.IOFunction[] {
                     (i) -> fileIds.add(buffer.getInt()),
                     (i) -> buffer.readFrom(channel)
             });
-            async.wrap(() -> updated = tracker.updateSid(client, fileIds));
-            async.wrap(() -> {
+            async.wrapRead(() -> updated = tracker.updateSid(client, fileIds));
+            async.wrapWrite(() -> {
                 buffer.putBool(updated);
                 return true;
             });
             async.channelInteract(() -> buffer.writeTo(channel));
-        } catch (AsyncRequestNotCompleteException e) {
+        } catch (AsyncReadRequestNotCompleteException e) {
+            async.channelInteract(() -> buffer.readFrom(channel));
+            return false;
+        } catch (AsyncWriteRequestNotCompleteException e) {
+            async.channelInteract(() -> buffer.writeTo(channel));
             return false;
         }
         return true;

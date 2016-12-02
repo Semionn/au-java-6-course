@@ -11,12 +11,12 @@ import java.nio.channels.SocketChannel;
 /**
  * Class for client and tracker sides handling of new client connection case
  */
-public class CreateNewRequest implements TrackerRequest {
+public class TrackerRequestCreator implements TrackerRequest {
 
     private ClientDescription client;
     private ByteBuffer buffer;
 
-    public CreateNewRequest(ClientDescription client) {
+    public TrackerRequestCreator(ClientDescription client) {
         this.client = client;
         this.buffer = ByteBuffer.allocate(Integer.BYTES);
     }

@@ -5,6 +5,7 @@ import com.au.mit.torrent.common.ClientAddress;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -12,12 +13,30 @@ public class ClientDescription {
     private SocketChannel channel;
     private ClientAddress clientAddress;
     private Set<FileDescription> fileDescriptions;
+    private LocalDateTime lastAccessTime = LocalDateTime.now();
 
     public ClientDescription(SocketChannel socketChannel) {
+        this(socketChannel,
+                new ClientAddress(
+                        ((InetSocketAddress) socketChannel.socket().getRemoteSocketAddress())
+                                .getAddress()
+                                .getHostAddress()
+                )
+        );
+    }
+
+    public ClientDescription(SocketChannel socketChannel, ClientAddress clientAddress) {
         channel = socketChannel;
         fileDescriptions = new HashSet<>();
-        final String host = ((InetSocketAddress) socketChannel.socket().getRemoteSocketAddress()).getAddress().getHostAddress();
-        clientAddress = new ClientAddress(host);
+        this.clientAddress = clientAddress;
+    }
+
+    public void updateAccessTime() {
+        lastAccessTime = LocalDateTime.now();
+    }
+
+    public LocalDateTime getLastAccessTime() {
+        return lastAccessTime;
     }
 
     public SocketChannel getChannel() {

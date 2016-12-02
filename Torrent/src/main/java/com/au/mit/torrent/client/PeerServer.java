@@ -1,60 +1,88 @@
-package com.au.mit.torrent.tracker;
+package com.au.mit.torrent.client;
 
-import com.au.mit.torrent.common.ClientAddress;
+import com.au.mit.torrent.common.PeerFileStat;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.exceptions.EmptyChannelException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.common.protocol.FileDescription;
-import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequestCreator;
-import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequest;
+import com.au.mit.torrent.common.protocol.requests.client.ClientRequest;
+import com.au.mit.torrent.common.protocol.requests.client.ClientRequestCreator;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.channels.*;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-public class SingleThreadTracker implements Tracker {
+public class PeerServer {
     private final static short DEFAULT_PORT = 8081;
     private final static String DEFAULT_INTERFACE = "0.0.0.0";
-    private final static Logger logger = Logger.getLogger(SingleThreadTracker.class.getName());
-    private final static int UPDATE_TIME_MIN = 5;
+    private final static Logger logger = Logger.getLogger(PeerServer.class.getName());
 
-    private int filesIdCounter = 0;
-    private final Map<Integer, FileDescription> fileDescriptions;
-    private final Map<ClientAddress, ClientDescription> clients;
     private Selector selector;
     private final InetSocketAddress listenAddress;
 
-    public SingleThreadTracker(String hostname, int port) {
-        listenAddress = new InetSocketAddress(hostname, port);
-        clients = new HashMap<>();
-        fileDescriptions = new HashMap<>();
+    private final HashMap<Integer, PeerFileStat> filesStats = new HashMap<>();
+    private final HashMap<Integer, FileDescription> filesDescriptions = new HashMap<>();
+
+    public PeerServer() {
+        this(DEFAULT_PORT);
     }
 
-    public SingleThreadTracker() {
-        this(DEFAULT_INTERFACE, DEFAULT_PORT);
+    public PeerServer(short port) {
+        this(DEFAULT_INTERFACE, port);
     }
 
-    @Override
-    public Map<Integer, FileDescription> getFileDescriptions() {
-        return fileDescriptions;
+    public PeerServer(String host, short port) {
+        listenAddress = new InetSocketAddress(host, port);
     }
 
-    @Override
-    public int addFileDescription(FileDescription fileDescription) {
-        int id = filesIdCounter;
-        fileDescription.setId(id);
-        fileDescriptions.put(id, fileDescription);
-        filesIdCounter++;
-        return id;
+    public PeerFileStat getPeerFileStat(int fileID) {
+        if (!filesStats.containsKey(fileID)) {
+            return null;
+        }
+        return filesStats.get(fileID);
     }
 
-    @Override
+    public void addLocalFile(FileDescription fileDescription) {
+        final int fileID = fileDescription.getId();
+        final int partsCount = PeerFileStat.getPartsCount(fileDescription.getSize());
+        filesDescriptions.put(fileID, fileDescription);
+        filesStats.put(fileID,
+                new PeerFileStat(fileID,
+                        IntStream.range(0, partsCount).boxed().collect(Collectors.toSet())));
+    }
+
+    public InputStream readFilePart(int fileID, int partNum) {
+        if (!filesDescriptions.containsKey(fileID)) {
+            return null;
+        }
+        final FileDescription fileDescription = filesDescriptions.get(fileID);
+        final int partPosition = PeerFileStat.getPartPosition(partNum);
+
+        if (fileDescription.getSize() <= partPosition) {
+            return null;
+        }
+        try {
+            final FileInputStream fileInputStream = new FileInputStream(new File(fileDescription.getLocalPath()));
+            final long actualSkipped = fileInputStream.skip(partPosition);
+            if (actualSkipped != partPosition) {
+                return null;
+            }
+            return fileInputStream;
+        } catch (IOException e) {
+            logger.log(Level.WARNING, "File reading failed", e);
+            return null;
+        }
+    }
+
     public void start() {
         try {
             selector = Selector.open();
@@ -64,11 +92,10 @@ public class SingleThreadTracker implements Tracker {
             serverChannel.socket().bind(listenAddress);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            logger.info("Server started...");
+            logger.info("Seed server started...");
 
             while (!Thread.interrupted()) {
                 selector.select();
-                checkClients();
 
                 Iterator keys = selector.selectedKeys().iterator();
                 while (keys.hasNext()) {
@@ -91,21 +118,8 @@ public class SingleThreadTracker implements Tracker {
         }
     }
 
-    @Override
-    public void addRequestHandler(SocketChannel channel, TrackerRequest request) throws ClosedChannelException {
+    public void addRequestHandler(SocketChannel channel, ClientRequest request) throws ClosedChannelException {
         channel.register(selector, SelectionKey.OP_READ, request);
-    }
-
-    @Override
-    public boolean updateSid(ClientDescription client, Set<Integer> fileIds) {
-        clients.put(client.getAddress(), client);
-        for (Integer fileId : fileIds) {
-            if (!fileDescriptions.containsKey(fileId)) {
-                return false;
-            }
-            client.addFile(fileDescriptions.get(fileId));
-        }
-        return true;
     }
 
     private void accept(SelectionKey key) throws IOException {
@@ -117,12 +131,12 @@ public class SingleThreadTracker implements Tracker {
         logger.info("Connected to peer: " + remoteAddr);
 
         ClientDescription client = new ClientDescription(channel);
-        channel.register(selector, SelectionKey.OP_READ, new TrackerRequestCreator(client));
+        channel.register(selector, SelectionKey.OP_READ, new ClientRequestCreator(client));
     }
 
     private void read(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
-        TrackerRequest request = (TrackerRequest) key.attachment();
+        ClientRequest request = (ClientRequest) key.attachment();
         try {
             if (request.handle(channel, this)) {
                 key.cancel();
@@ -137,13 +151,5 @@ public class SingleThreadTracker implements Tracker {
             channel.close();
             key.cancel();
         }
-    }
-
-    private void checkClients() {
-        final List<ClientAddress> oldClients = clients.entrySet().stream()
-                .filter(entry ->
-                        entry.getValue().getLastAccessTime().plusMinutes(UPDATE_TIME_MIN).isAfter(LocalDateTime.now()))
-                .map(Map.Entry::getKey).collect(Collectors.toList());
-        oldClients.forEach(clients::remove);
     }
 }

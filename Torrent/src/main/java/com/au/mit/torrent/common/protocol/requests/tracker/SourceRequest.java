@@ -3,14 +3,14 @@ package com.au.mit.torrent.common.protocol.requests.tracker;
 import com.au.mit.torrent.common.AsyncWrapper;
 import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.SmartBuffer;
-import com.au.mit.torrent.common.exceptions.AsyncRequestNotCompleteException;
+import com.au.mit.torrent.common.exceptions.AsyncReadRequestNotCompleteException;
+import com.au.mit.torrent.common.exceptions.AsyncWriteRequestNotCompleteException;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.common.protocol.FileDescription;
 import com.au.mit.torrent.tracker.Tracker;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.*;
@@ -52,13 +52,13 @@ public class SourceRequest implements TrackerRequest {
         try {
             async.resetCounter();
             async.channelInteract(() -> buffer.readFrom(channel));
-            async.wrap(() -> fileID = buffer.getInt());
-            async.wrap(() -> fileDescription = tracker.getFileDescriptions().get(fileID));
-            async.wrap(() -> sids = new ArrayList<>(fileDescription.getSids()));
-            async.wrap(() -> sidsCount = sids.size());
-            async.wrap(() -> { buffer.putInt(sidsCount); return true; });
+            async.wrapRead(() -> fileID = buffer.getInt());
+            async.wrapRead(() -> fileDescription = tracker.getFileDescriptions().get(fileID));
+            async.wrapRead(() -> sids = new ArrayList<>(fileDescription.getSids()));
+            async.wrapRead(() -> sidsCount = sids.size());
+            async.wrapWrite(() -> { buffer.putInt(sidsCount); return true; });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
-            async.forloop(0, sidsCount, new AsyncWrapper.IOFunction[] {
+            async.forloopWrite(0, sidsCount, new AsyncWrapper.IOFunction[] {
                     (i) -> clientAddress = sids.get((Integer) i).getAddress(),
                     (i) -> { buffer.putByte(clientAddress.getIPByte((byte) 0)); return true; },
                     (i) -> { buffer.putByte(clientAddress.getIPByte((byte) 1)); return true; },
@@ -68,7 +68,11 @@ public class SourceRequest implements TrackerRequest {
                     (i) -> buffer.writeTo(channel)
             });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
-        } catch (AsyncRequestNotCompleteException e) {
+        } catch (AsyncReadRequestNotCompleteException e) {
+            async.channelInteract(() -> buffer.readFrom(channel));
+            return false;
+        } catch (AsyncWriteRequestNotCompleteException e) {
+            async.channelInteract(() -> buffer.writeTo(channel));
             return false;
         }
         return true;
@@ -83,14 +87,14 @@ public class SourceRequest implements TrackerRequest {
             SmartBuffer bufferRead = SmartBuffer.allocate(1024);
             int sidsCount = bufferRead.getIntSync(channel);
             Set<ClientAddress> sids = new HashSet<>();
-            byte[] ip = new byte[4];
+            int[] ip = new int[4];
             short clientPort;
             String clientIP;
             for (int i = 0; i < sidsCount; i++) {
-                ip[0] = bufferRead.getByteSync(channel);
-                ip[1] = bufferRead.getByteSync(channel);
-                ip[2] = bufferRead.getByteSync(channel);
-                ip[3] = bufferRead.getByteSync(channel);
+                ip[0] = ClientAddress.IPByteToInt(bufferRead.getByteSync(channel));
+                ip[1] = ClientAddress.IPByteToInt(bufferRead.getByteSync(channel));
+                ip[2] = ClientAddress.IPByteToInt(bufferRead.getByteSync(channel));
+                ip[3] = ClientAddress.IPByteToInt(bufferRead.getByteSync(channel));
                 clientPort = bufferRead.getShortSync(channel);
                 clientIP = String.format("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
                 sids.add(new ClientAddress(clientIP, clientPort));

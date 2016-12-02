@@ -2,7 +2,8 @@ package com.au.mit.torrent.common.protocol.requests.tracker;
 
 import com.au.mit.torrent.common.AsyncWrapper;
 import com.au.mit.torrent.common.SmartBuffer;
-import com.au.mit.torrent.common.exceptions.AsyncRequestNotCompleteException;
+import com.au.mit.torrent.common.exceptions.AsyncReadRequestNotCompleteException;
+import com.au.mit.torrent.common.exceptions.AsyncWriteRequestNotCompleteException;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.common.protocol.FileDescription;
@@ -48,16 +49,20 @@ public class UploadRequest implements TrackerRequest {
         try {
             async.resetCounter();
             async.channelInteract(() -> buffer.readFrom(channel));
-            async.wrap(() -> fileName = buffer.getString());
-            async.wrap(() -> fileSize = buffer.getLong());
-            async.wrap(() -> fileDescription = new FileDescription(fileName, fileSize));
-            async.wrap(() -> fileID = tracker.addFileDescription(fileDescription));
-            async.wrap(() -> {
+            async.wrapRead(() -> fileName = buffer.getString());
+            async.wrapRead(() -> fileSize = buffer.getLong());
+            async.wrapRead(() -> fileDescription = new FileDescription(fileName, fileSize));
+            async.wrapRead(() -> fileID = tracker.addFileDescription(fileDescription));
+            async.wrapWrite(() -> {
                 writeBuffer.putInt(fileID);
                 return true;
             });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
-        } catch (AsyncRequestNotCompleteException e) {
+        } catch (AsyncReadRequestNotCompleteException e) {
+            async.channelInteract(() -> buffer.readFrom(channel));
+            return false;
+        } catch (AsyncWriteRequestNotCompleteException e) {
+            async.channelInteract(() -> buffer.writeTo(channel));
             return false;
         }
         return true;

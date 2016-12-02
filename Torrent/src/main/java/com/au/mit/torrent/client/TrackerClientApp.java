@@ -15,7 +15,7 @@ public class TrackerClientApp {
         final ClientImpl client = new ClientImpl(PORT);
         client.connect(TRACKER_HOSTNAME, TRACKER_PORT);
         if (publishedFile != null) {
-            client.uploadFileRequest(publishedFile);
+            client.uploadFile(publishedFile);
             client.listRequest();
         }
     }
