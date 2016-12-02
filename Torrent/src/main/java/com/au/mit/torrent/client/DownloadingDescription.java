@@ -1,5 +1,8 @@
 package com.au.mit.torrent.client;
 
+/**
+ * Data class for storing pair: file part number - peer (from which the part could be downloaded)
+ */
 public class DownloadingDescription {
     private final PeerDescription peerDescription;
     private final int partNum;

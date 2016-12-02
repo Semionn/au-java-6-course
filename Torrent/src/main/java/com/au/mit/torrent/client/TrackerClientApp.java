@@ -1,5 +1,8 @@
 package com.au.mit.torrent.client;
 
+/**
+ * Console application with ClientImpl implementation of torrent client
+ */
 public class TrackerClientApp {
     private static final short PORT = 8082;
 

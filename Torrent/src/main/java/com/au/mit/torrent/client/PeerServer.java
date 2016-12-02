@@ -21,6 +21,9 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Server of torrent client, which allows provide access to its own files with requests: Get and Stat
+ */
 public class PeerServer {
     private final static short DEFAULT_PORT = 8081;
     private final static String DEFAULT_INTERFACE = "0.0.0.0";
@@ -44,14 +47,14 @@ public class PeerServer {
         listenAddress = new InetSocketAddress(host, port);
     }
 
-    public PeerFileStat getPeerFileStat(int fileID) {
+    PeerFileStat getPeerFileStat(int fileID) {
         if (!filesStats.containsKey(fileID)) {
             return null;
         }
         return filesStats.get(fileID);
     }
 
-    public void addLocalFile(FileDescription fileDescription) {
+    void addLocalFile(FileDescription fileDescription) {
         final int fileID = fileDescription.getId();
         final int partsCount = PeerFileStat.getPartsCount(fileDescription.getSize());
         filesDescriptions.put(fileID, fileDescription);
@@ -60,7 +63,7 @@ public class PeerServer {
                         IntStream.range(0, partsCount).boxed().collect(Collectors.toSet())));
     }
 
-    public InputStream readFilePart(int fileID, int partNum) {
+    InputStream readFilePart(int fileID, int partNum) {
         if (!filesDescriptions.containsKey(fileID)) {
             return null;
         }
@@ -83,6 +86,9 @@ public class PeerServer {
         }
     }
 
+    /**
+     * Starts the peer server
+     */
     public void start() {
         try {
             selector = Selector.open();
@@ -118,6 +124,13 @@ public class PeerServer {
         }
     }
 
+    /**
+     * Adds request handler on reading from channel with additional attachment - ClientRequest.
+     * Its handle method will be called after next data receiving from channel
+     * @param channel channel for tracking
+     * @param request request handler of input data
+     * @throws ClosedChannelException
+     */
     public void addRequestHandler(SocketChannel channel, ClientRequest request) throws ClosedChannelException {
         channel.register(selector, SelectionKey.OP_READ, request);
     }

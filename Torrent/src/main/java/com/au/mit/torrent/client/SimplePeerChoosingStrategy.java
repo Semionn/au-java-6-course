@@ -1,10 +1,12 @@
 package com.au.mit.torrent.client;
 
-
 import java.util.*;
 
+/**
+ * Implementation of PeerChoosingStrategy interface.
+ * Greedy algorithm: first, get parts from peers with lower number of available parts and the rest peers next
+ */
 public class SimplePeerChoosingStrategy implements PeerChoosingStrategy {
-
     @Override
     public Set<DownloadingDescription> getDownloadingDescription(Set<Integer> localParts, Set<PeerDescription> peerDescriptions) {
         Set<Integer> totalParts = new HashSet<>();
