@@ -16,6 +16,9 @@ import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.logging.Logger;
 
+/**
+ * Implementation of Source request for tracker server
+ */
 public class SourceRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(SourceRequest.class.getName());
 
@@ -32,19 +35,14 @@ public class SourceRequest implements TrackerRequest {
 
     public SourceRequest(ClientDescription client) {
         this.client = client;
-        buffer = SmartBuffer.allocate(1024);
         async = new AsyncWrapper();
-        writeBuffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES));
+        buffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES));
+        writeBuffer = SmartBuffer.allocate(1024);
     }
 
     @Override
     public ClientDescription getClient() {
         return client;
-    }
-
-    @Override
-    public TrackerRequestType getType() {
-        return TrackerRequestType.SOURCES;
     }
 
     @Override
@@ -56,28 +54,32 @@ public class SourceRequest implements TrackerRequest {
             async.wrapRead(() -> fileDescription = tracker.getFileDescriptions().get(fileID));
             async.wrapRead(() -> sids = new ArrayList<>(fileDescription.getSids()));
             async.wrapRead(() -> sidsCount = sids.size());
-            async.wrapWrite(() -> { buffer.putInt(sidsCount); return true; });
+            async.wrapWrite(() -> { writeBuffer.putInt(sidsCount); return true; });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
             async.forloopWrite(0, sidsCount, new AsyncWrapper.IOFunction[] {
                     (i) -> clientAddress = sids.get((Integer) i).getAddress(),
-                    (i) -> { buffer.putByte(clientAddress.getIPByte((byte) 0)); return true; },
-                    (i) -> { buffer.putByte(clientAddress.getIPByte((byte) 1)); return true; },
-                    (i) -> { buffer.putByte(clientAddress.getIPByte((byte) 2)); return true; },
-                    (i) -> { buffer.putByte(clientAddress.getIPByte((byte) 3)); return true; },
-                    (i) -> { buffer.putShort(clientAddress.getPort()); return true; },
-                    (i) -> buffer.writeTo(channel)
+                    (i) -> { writeBuffer.putByte(clientAddress.getIPByte((byte) 0)); return true; },
+                    (i) -> { writeBuffer.putByte(clientAddress.getIPByte((byte) 1)); return true; },
+                    (i) -> { writeBuffer.putByte(clientAddress.getIPByte((byte) 2)); return true; },
+                    (i) -> { writeBuffer.putByte(clientAddress.getIPByte((byte) 3)); return true; },
+                    (i) -> { writeBuffer.putShort(clientAddress.getPort()); return true; },
+                    (i) -> writeBuffer.writeTo(channel)
             });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
         } catch (AsyncReadRequestNotCompleteException e) {
             async.channelInteract(() -> buffer.readFrom(channel));
             return false;
         } catch (AsyncWriteRequestNotCompleteException e) {
-            async.channelInteract(() -> buffer.writeTo(channel));
+            async.channelInteract(() -> writeBuffer.writeTo(channel));
             return false;
         }
         return true;
     }
 
+    /**
+     * Sends Source request to tracker
+     * @param channel channel for communication with the tracker
+     */
     public static Set<ClientAddress> send(SocketChannel channel, int fileID) {
         try {
             SmartBuffer bufferWrite = SmartBuffer.allocate(1024);

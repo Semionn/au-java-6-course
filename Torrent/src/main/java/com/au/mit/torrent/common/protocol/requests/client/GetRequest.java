@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Implementation of Get request for peer server
+ */
 public class GetRequest implements ClientRequest {
     private final static Logger logger = Logger.getLogger(GetRequest.class.getName());
 
@@ -39,11 +42,6 @@ public class GetRequest implements ClientRequest {
     @Override
     public ClientDescription getClient() {
         return client;
-    }
-
-    @Override
-    public ClientRequestType getType() {
-        return ClientRequestType.GET;
     }
 
     @Override
@@ -89,7 +87,7 @@ public class GetRequest implements ClientRequest {
 
     /**
      * Sends Get request to peer server
-     * @param channel channel for sending port
+     * @param channel channel for communication with the peer server
      */
     public static byte[] send(SocketChannel channel, int fileID, int partNum) {
         try {

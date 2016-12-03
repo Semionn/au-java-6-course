@@ -91,7 +91,6 @@ public class TorrentTrackerTest {
         }
         fileBDownloaded.deleteOnExit();
 
-
-        trackerThread.join(2000);
+        trackerThread.join(1000);
     }
 }

@@ -16,6 +16,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * Implementation of Stat request for peer server
+ */
 public class StatRequest implements ClientRequest {
     private final static Logger logger = Logger.getLogger(StatRequest.class.getName());
 
@@ -34,11 +37,6 @@ public class StatRequest implements ClientRequest {
     @Override
     public ClientDescription getClient() {
         return client;
-    }
-
-    @Override
-    public ClientRequestType getType() {
-        return ClientRequestType.STAT;
     }
 
     @Override
@@ -77,7 +75,7 @@ public class StatRequest implements ClientRequest {
 
     /**
      * Sends Stat request to peer server
-     * @param channel channel for sending port
+     * @param channel channel for communication with the peer server
      */
     public static PeerFileStat send(SocketChannel channel, int fileID) {
         try {

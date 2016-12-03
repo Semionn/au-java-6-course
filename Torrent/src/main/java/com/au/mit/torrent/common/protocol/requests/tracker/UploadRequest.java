@@ -14,6 +14,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.logging.Logger;
 
+/**
+ * Implementation of Upload request for tracker server
+ */
 public class UploadRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(UploadRequest.class.getName());
 
@@ -40,11 +43,6 @@ public class UploadRequest implements TrackerRequest {
     }
 
     @Override
-    public TrackerRequestType getType() {
-        return TrackerRequestType.UPLOAD;
-    }
-
-    @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
         try {
             async.resetCounter();
@@ -68,6 +66,10 @@ public class UploadRequest implements TrackerRequest {
         return true;
     }
 
+    /**
+     * Sends Upload request to tracker
+     * @param channel channel for communication with the tracker
+     */
     public static int send(SocketChannel channel, String fileName, Long fileSize) {
         try {
             SmartBuffer bufferWrite = SmartBuffer.allocate(1024);

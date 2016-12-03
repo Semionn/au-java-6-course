@@ -27,11 +27,6 @@ public class TrackerRequestCreator implements TrackerRequest {
     }
 
     @Override
-    public TrackerRequestType getType() {
-        return TrackerRequestType.CREATE_REQUEST;
-    }
-
-    @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
         int numRead = channel.read(buffer);
         if (numRead == -1) {

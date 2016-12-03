@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+/**
+ * Implementation of List request for tracker server
+ */
 public class ListRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(ListRequest.class.getName());
 
@@ -34,11 +37,6 @@ public class ListRequest implements TrackerRequest {
     @Override
     public ClientDescription getClient() {
         return client;
-    }
-
-    @Override
-    public TrackerRequestType getType() {
-        return TrackerRequestType.LIST;
     }
 
     @Override
@@ -79,7 +77,7 @@ public class ListRequest implements TrackerRequest {
 
     /**
      * Sends List request to tracker
-     * @param channel channel for sending port
+     * @param channel channel for communication with the tracker
      */
     public static Map<Integer, FileDescription> send(SocketChannel channel) {
         try {

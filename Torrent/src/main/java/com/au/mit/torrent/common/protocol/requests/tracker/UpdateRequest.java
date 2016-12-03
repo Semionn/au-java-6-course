@@ -16,6 +16,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
 
+/**
+ * Implementation of Update request for tracker server
+ */
 public class UpdateRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(UpdateRequest.class.getName());
 
@@ -36,11 +39,6 @@ public class UpdateRequest implements TrackerRequest {
     @Override
     public ClientDescription getClient() {
         return client;
-    }
-
-    @Override
-    public TrackerRequestType getType() {
-        return TrackerRequestType.UPDATE;
     }
 
     @Override
@@ -74,6 +72,10 @@ public class UpdateRequest implements TrackerRequest {
         return true;
     }
 
+    /**
+     * Sends Update request to tracker
+     * @param channel channel for communication with the tracker
+     */
     public static boolean send(SocketChannel channel, short localPort, Set<FileDescription> localFiles) {
         try {
             SmartBuffer buffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES*4));

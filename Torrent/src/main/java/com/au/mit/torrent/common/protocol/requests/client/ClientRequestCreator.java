@@ -12,7 +12,6 @@ import java.nio.channels.SocketChannel;
  * Class for client and tracker sides handling of new connection between peers
  */
 public class ClientRequestCreator implements ClientRequest {
-
     private ClientDescription client;
     private ByteBuffer buffer;
 
@@ -26,11 +25,10 @@ public class ClientRequestCreator implements ClientRequest {
         return client;
     }
 
-    @Override
-    public ClientRequestType getType() {
-        return ClientRequestType.CREATE_REQUEST;
-    }
-
+    /**
+     * Reads int from the channel, creates and starts appropriate request handler (Get or Stat).
+     * If command isn't complete after first attempt, it register in peer server for future channel updates
+     */
     @Override
     public boolean handle(SocketChannel channel, PeerServer peerServer) throws IOException {
         int numRead = channel.read(buffer);

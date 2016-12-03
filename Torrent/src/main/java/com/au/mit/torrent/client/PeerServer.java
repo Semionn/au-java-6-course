@@ -47,23 +47,23 @@ public class PeerServer {
         listenAddress = new InetSocketAddress(host, port);
     }
 
-    PeerFileStat getPeerFileStat(int fileID) {
+    /**
+     * Returns PeerFileStat data object if appropriate file exists, null otherwise
+     */
+    public PeerFileStat getPeerFileStat(int fileID) {
         if (!filesStats.containsKey(fileID)) {
             return null;
         }
         return filesStats.get(fileID);
     }
 
-    void addLocalFile(FileDescription fileDescription) {
-        final int fileID = fileDescription.getId();
-        final int partsCount = PeerFileStat.getPartsCount(fileDescription.getSize());
-        filesDescriptions.put(fileID, fileDescription);
-        filesStats.put(fileID,
-                new PeerFileStat(fileID,
-                        IntStream.range(0, partsCount).boxed().collect(Collectors.toSet())));
-    }
-
-    InputStream readFilePart(int fileID, int partNum) {
+    /**
+     * Returns input stream to read from specified part of the specified file
+     * @param fileID local file id, previously uploaded to the tracker
+     * @param partNum part number of the file
+     * @return input stream for reading the part
+     */
+    public InputStream readFilePart(int fileID, int partNum) {
         if (!filesDescriptions.containsKey(fileID)) {
             return null;
         }
@@ -133,6 +133,15 @@ public class PeerServer {
      */
     public void addRequestHandler(SocketChannel channel, ClientRequest request) throws ClosedChannelException {
         channel.register(selector, SelectionKey.OP_READ, request);
+    }
+
+    void addLocalFile(FileDescription fileDescription) {
+        final int fileID = fileDescription.getId();
+        final int partsCount = PeerFileStat.getPartsCount(fileDescription.getSize());
+        filesDescriptions.put(fileID, fileDescription);
+        filesStats.put(fileID,
+                new PeerFileStat(fileID,
+                        IntStream.range(0, partsCount).boxed().collect(Collectors.toSet())));
     }
 
     private void accept(SelectionKey key) throws IOException {

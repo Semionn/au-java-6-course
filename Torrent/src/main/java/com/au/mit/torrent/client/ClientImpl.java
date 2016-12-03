@@ -82,6 +82,8 @@ public class ClientImpl implements Client {
                 }
             }
         });
+        updateThread.setDaemon(true);
+        updateThread.start();
     }
 
     @Override

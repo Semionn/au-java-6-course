@@ -98,6 +98,7 @@ public class SingleThreadTracker implements Tracker {
 
     @Override
     public boolean updateSid(ClientDescription client, Set<Integer> fileIds) {
+        client.updateAccessTime();
         clients.put(client.getAddress(), client);
         for (Integer fileId : fileIds) {
             if (!fileDescriptions.containsKey(fileId)) {
@@ -140,10 +141,11 @@ public class SingleThreadTracker implements Tracker {
     }
 
     private void checkClients() {
-        final List<ClientAddress> oldClients = clients.entrySet().stream()
+        final List<ClientDescription> oldClients = clients.entrySet().stream()
                 .filter(entry ->
-                        entry.getValue().getLastAccessTime().plusMinutes(UPDATE_TIME_MIN).isAfter(LocalDateTime.now()))
-                .map(Map.Entry::getKey).collect(Collectors.toList());
-        oldClients.forEach(clients::remove);
+                        entry.getValue().getLastAccessTime().plusMinutes(UPDATE_TIME_MIN).isBefore(LocalDateTime.now()))
+                .map(Map.Entry::getValue).collect(Collectors.toList());
+        oldClients.forEach(client -> clients.remove(client.getAddress()));
+        oldClients.forEach(client -> client.getFileDescriptions().forEach(fd -> fd.removeClient(client)));
     }
 }
