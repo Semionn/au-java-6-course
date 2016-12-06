@@ -5,7 +5,6 @@ import com.au.mit.vcs.common.exceptions.CommandExecutionException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
 import static com.au.mit.vcs.common.Utility.*;
@@ -50,6 +49,13 @@ public class Diff implements java.io.Serializable {
     }
 
     /**
+     * Returns true if the diff describes deletion of file, false otherwise
+     */
+    public boolean isDeleting() {
+        return deleting;
+    }
+
+    /**
      * Applies stored changes of the tracked file to state of same file in the VCS working directory
      * @param commitPath path to commit folder with stored changes of the tracked file
      */
@@ -72,7 +78,7 @@ public class Diff implements java.io.Serializable {
     public void undo(Path storagePath) {
         try {
             Commit previousFileChangeCommit = previousHead;
-            while (!previousFileChangeCommit.getDiffList().stream().anyMatch(diff -> diff.filePath.equals(filePath))) {
+            while (previousFileChangeCommit.getDiffList().stream().noneMatch(diff -> diff.filePath.equals(filePath))) {
                 previousFileChangeCommit = previousFileChangeCommit.getPreviousCommit();
                 if (previousFileChangeCommit == null) {
                     Files.deleteIfExists(getFilePath());

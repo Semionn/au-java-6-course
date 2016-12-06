@@ -1,13 +1,14 @@
 package com.au.mit.vcs.common;
 
 import com.au.mit.vcs.common.command.args.CommandArgs;
-import com.au.mit.vcs.common.exceptions.CommandBuildingException;
+import com.au.mit.vcs.common.commit.Commit;
 import com.au.mit.vcs.common.exceptions.CommandExecutionException;
 import com.au.mit.vcs.common.exceptions.NotEnoughArgumentsException;
 import org.apache.commons.cli.Options;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -33,14 +34,25 @@ public class ResetCmd extends Command {
         };
     }
 
+    /**
+     * Reset state of file in the VCS working directory to state of the last commit
+     * @param repository the VCS repository
+     * @param filePath path of the file in the working directory
+     */
     public static void resetFile(Repository repository, String filePath) {
         try {
             String relativeFilePath = Repository.makeRelativePath(filePath);
             repository.getCache().resetFile(relativeFilePath);
+            final Map<String, Commit> indexedFiles = repository.getIndexedFiles();
             repository.getTrackedDiffs().stream()
                     .filter(diff -> diff.getFileStrPath().equals(relativeFilePath))
                     .collect(Collectors.toList())
-                    .forEach(repository.getTrackedDiffs()::remove);
+                    .forEach(diff -> {
+                        if (indexedFiles.containsKey(relativeFilePath)) {
+                            diff.undo(repository.getStoragePath());
+                        }
+                        repository.getTrackedDiffs().remove(diff);
+                    });
         } catch (IOException e) {
             throw new CommandExecutionException(e);
         }

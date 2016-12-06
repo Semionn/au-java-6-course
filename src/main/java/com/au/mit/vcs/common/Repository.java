@@ -5,12 +5,10 @@ import com.au.mit.vcs.common.commit.Commit;
 import com.au.mit.vcs.common.commit.Diff;
 import com.au.mit.vcs.common.exceptions.CommandExecutionException;
 import com.au.mit.vcs.common.exceptions.RepositorySerializationException;
-import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Function;
@@ -47,9 +45,9 @@ public class Repository implements java.io.Serializable {
         cache = new Cache();
         currentBranch = new Branch("master", null);
         head = new Commit("", "", currentBranch, head, trackedDiffs);
-        commits = Arrays.asList(head).stream().collect(Collectors.toMap(Commit::getHash, Function.identity()));
+        commits = Stream.of(head).collect(Collectors.toMap(Commit::getHash, Function.identity()));
         currentBranch.setLastCommit(head);
-        branches = Arrays.asList(currentBranch).stream().collect(Collectors.toMap(Branch::getName, Function.identity()));
+        branches = Stream.of(currentBranch).collect(Collectors.toMap(Branch::getName, Function.identity()));
     }
 
     List<Diff> getTrackedDiffs() {
@@ -122,15 +120,17 @@ public class Repository implements java.io.Serializable {
         return repository;
     }
 
-    Set<String> getIndexedFiles() {
-        Set<String> result = new HashSet<>();
+    Map<String, Commit> getIndexedFiles() {
+        Map<String, Commit> result = new HashMap<>();
         Commit currentCommit = head;
         while (currentCommit != null) {
-            result.addAll(currentCommit.getDiffList().stream()
+            final Commit curFilesCommit = currentCommit;
+            currentCommit.getDiffList().stream()
                     .map(Diff::getFilePath)
                     .map(Path::toAbsolutePath)
                     .map(Path::toString)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toMap(Function.identity(), p -> curFilesCommit))
+                    .forEach(result::putIfAbsent);
             currentCommit = currentCommit.getPreviousCommit();
         }
         return result;
