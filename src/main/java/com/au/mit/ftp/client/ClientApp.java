@@ -1,5 +1,8 @@
 package com.au.mit.ftp.client;
 
+import com.au.mit.ftp.common.ClientCommandType;
+import com.au.mit.ftp.common.ServerCommandType;
+
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -32,32 +35,41 @@ public class ClientApp {
 
     private static void processCommand(Client client, String input) {
         final String[] splitted = input.split(" ");
-        String command = splitted[0];
+        String commandName = splitted[0];
         final String[] arguments = Arrays.copyOfRange(splitted, 1, splitted.length);
-        switch (command) {
-            case "disconnect":
-                client.disconnect();
-                break;
-            case "connect":
-                client.connect();
-                break;
-            case "list":
-                String listPath = "";
-                if (arguments.length >= 1) {
-                    listPath = arguments[0];
+
+        ClientCommandType clientCommand = ClientCommandType.getByName(commandName);
+        if (clientCommand != null) {
+            switch (clientCommand) {
+                case DISCONNECT:
+                    client.disconnect();
+                    break;
+                case CONNECT:
+                    client.connect();
+                    break;
+            }
+        } else {
+            ServerCommandType serverCommand = ServerCommandType.getByName(commandName);
+            if (serverCommand != null) {
+                switch (serverCommand) {
+                    case LIST:
+                        String listPath = "";
+                        if (arguments.length >= 1) {
+                            listPath = arguments[0];
+                        }
+                        client.executeList(listPath);
+                        break;
+                    case GET:
+                        String getPath = "";
+                        if (arguments.length >= 1) {
+                            getPath = arguments[0];
+                        }
+                        client.executeGet(getPath);
+                        break;
                 }
-                client.executeList(listPath);
-                break;
-            case "get":
-                String getPath = "";
-                if (arguments.length >= 1) {
-                    getPath = arguments[0];
-                }
-                client.executeGet(getPath);
-                break;
-            default:
+            } else {
                 System.out.println("Unknown command");
-                break;
+            }
         }
     }
 }

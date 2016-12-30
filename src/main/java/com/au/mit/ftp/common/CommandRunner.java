@@ -19,12 +19,12 @@ public class CommandRunner {
         this.ftpPath = ftpPath;
     }
 
-    public void run(int commandId, String commandArgs, DataOutputStream out) {
+    public void run(ServerCommandType commandId, String commandArgs, DataOutputStream out) {
         switch (commandId) {
-            case 1:
+            case LIST:
                 runListCmd(commandArgs, out);
                 break;
-            case 2:
+            case GET:
                 runGetCmd(commandArgs, out);
                 break;
             default:
@@ -84,7 +84,11 @@ public class CommandRunner {
     public void acceptCommand(DataOutputStream out, DataInputStream in) {
         try {
             int commandId = in.readInt();
-            run(commandId, in.readUTF(), out);
+            ServerCommandType command = ServerCommandType.getByID(commandId);
+            if (command == null) {
+                throw new CommandExecutionException(String.format("Command with id %d not found", commandId));
+            }
+            run(command, in.readUTF(), out);
             out.flush();
         } catch (IOException e) {
             throw new CommunicationException(e.getMessage(), e);

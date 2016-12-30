@@ -20,7 +20,7 @@ public class CommandSender {
 
     public void sendListCmd(DataOutputStream out, DataInputStream in, String path) {
         try {
-            out.writeInt(1);
+            out.writeInt(ServerCommandType.LIST.getId());
             out.writeUTF(path);
             out.flush();
             int filesCount = in.readInt();
@@ -36,7 +36,7 @@ public class CommandSender {
 
     public void sendGetCmd(DataOutputStream out, DataInputStream in, String path) {
         try {
-            out.writeInt(2);
+            out.writeInt(ServerCommandType.GET.getId());
             out.writeUTF(path);
             out.flush();
 
