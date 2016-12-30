@@ -10,14 +10,19 @@ import java.nio.charset.Charset;
  */
 public class SmartBuffer {
     private ByteBuffer buffer;
-    private boolean isReadState = false;
+    private boolean isReadState;
 
     public static SmartBuffer allocate(int capacity) {
         return new SmartBuffer(ByteBuffer.allocate(capacity));
     }
 
     public SmartBuffer(ByteBuffer buffer) {
+        this(buffer, false);
+    }
+
+    public SmartBuffer(ByteBuffer buffer, boolean isReadState) {
         this.buffer = buffer;
+        this.isReadState = isReadState;
     }
 
     public ByteBuffer getBuffer() {
