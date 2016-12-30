@@ -38,6 +38,7 @@ public class ClientManager {
                     if (e.getMessage() != null) {
                         out.writeUTF(e.getMessage());
                     }
+                    break;
                 }
             }
         } catch (IOException e) {
