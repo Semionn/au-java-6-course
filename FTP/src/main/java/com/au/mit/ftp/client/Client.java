@@ -6,7 +6,6 @@ import com.au.mit.ftp.common.exceptions.DisconnectedException;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.function.BiFunction;
 
 /**
  * Primary client class for ftp
