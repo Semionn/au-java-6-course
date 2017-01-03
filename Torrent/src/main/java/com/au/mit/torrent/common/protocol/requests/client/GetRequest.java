@@ -25,8 +25,6 @@ public class GetRequest implements ClientRequest {
     private final static Logger logger = Logger.getLogger(GetRequest.class.getName());
 
     private ClientDescription client;
-    private List<FileDescription> fileDescriptions = null;
-    private FileDescription fileDescription = null;
     private Integer fileID = null;
     private Integer partNum = null;
     private PeerFileStat peerFileStat = null;
@@ -70,11 +68,6 @@ public class GetRequest implements ClientRequest {
             });
 
             async.channelInteract(() -> bufferWrite.writeTo(channel));
-
-            async.channelInteract(() -> {
-                channel.close();
-                return 0;
-            });
         } catch (AsyncReadRequestNotCompleteException e) {
             async.channelInteract(() -> bufferRead.readFrom(channel));
             return false;
