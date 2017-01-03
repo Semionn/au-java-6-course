@@ -44,7 +44,7 @@ public class UpdateRequest implements TrackerRequest {
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
         try {
-            async.resetCounter();
+            async.reset();
             async.channelInteract(() -> buffer.readFrom(channel));
             async.wrapRead(() -> clientPort = buffer.getShort());
             async.wrapRead(() -> {
@@ -56,17 +56,17 @@ public class UpdateRequest implements TrackerRequest {
                     (i) -> fileIds.add(buffer.getInt()),
                     (i) -> buffer.readFrom(channel)
             });
-            async.wrapRead(() -> updated = tracker.updateSid(client, fileIds));
+            async.wrapRead(() -> updated = tracker.updateSeed(client, fileIds));
             async.wrapWrite(() -> {
                 buffer.putBool(updated);
                 return true;
             });
             async.channelInteract(() -> buffer.writeTo(channel));
         } catch (AsyncReadRequestNotCompleteException e) {
-            async.channelInteract(() -> buffer.readFrom(channel));
+            async.setReadInteractionSupplier(() -> buffer.readFrom(channel));
             return false;
         } catch (AsyncWriteRequestNotCompleteException e) {
-            async.channelInteract(() -> buffer.writeTo(channel));
+            async.setWriteInteractionSupplier(() -> buffer.writeTo(channel));
             return false;
         }
         return true;

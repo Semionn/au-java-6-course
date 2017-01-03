@@ -48,11 +48,11 @@ public class SourceRequest implements TrackerRequest {
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
         try {
-            async.resetCounter();
+            async.reset();
             async.channelInteract(() -> buffer.readFrom(channel));
             async.wrapRead(() -> fileID = buffer.getInt());
             async.wrapRead(() -> fileDescription = tracker.getFileDescriptions().get(fileID));
-            async.wrapRead(() -> sids = new ArrayList<>(fileDescription.getSids()));
+            async.wrapRead(() -> sids = new ArrayList<>(fileDescription.getSeeds()));
             async.wrapRead(() -> sidsCount = sids.size());
             async.wrapWrite(() -> { writeBuffer.putInt(sidsCount); return true; });
             async.channelInteract(() -> writeBuffer.writeTo(channel));

@@ -57,7 +57,7 @@ public class ClientDescription {
 
     public void addFile(FileDescription fileDescription) {
         fileDescriptions.add(fileDescription);
-        fileDescription.addSid(this);
+        fileDescription.addSeed(this);
     }
 
     public int getLocalPort() {

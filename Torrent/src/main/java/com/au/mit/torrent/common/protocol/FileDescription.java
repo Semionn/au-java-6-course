@@ -11,7 +11,7 @@ public class FileDescription {
     private String name;
     private long size;
     private String localPath = null;
-    private Set<ClientDescription> sids = new HashSet<>();
+    private Set<ClientDescription> seeds = new HashSet<>();
 
     public FileDescription(String name, long size) {
         this(-1, name, size, "");
@@ -56,28 +56,28 @@ public class FileDescription {
         return size;
     }
 
-    public Set<ClientDescription> getSids() {
-        return sids;
+    public Set<ClientDescription> getSeeds() {
+        return seeds;
     }
 
-    public void setSids(Set<ClientDescription> sids) {
-        this.sids = sids;
+    public void setSeeds(Set<ClientDescription> seeds) {
+        this.seeds = seeds;
     }
 
-    public Set<ClientAddress> getSidsAddresses() {
-        return sids.stream().map(ClientDescription::getAddress).collect(Collectors.toSet());
+    public Set<ClientAddress> getSeedsAddresses() {
+        return seeds.stream().map(ClientDescription::getAddress).collect(Collectors.toSet());
     }
 
-    public void setSidsAddresses(Set<ClientAddress> sidsAddresses) {
-        sids = sidsAddresses.stream().map(a -> new ClientDescription(null, a)).collect(Collectors.toSet());
+    public void setSeedsAddresses(Set<ClientAddress> seedsAddresses) {
+        seeds = seedsAddresses.stream().map(a -> new ClientDescription(null, a)).collect(Collectors.toSet());
     }
 
-    public void addSid(ClientDescription clientDescription) {
-        sids.add(clientDescription);
+    public void addSeed(ClientDescription clientDescription) {
+        seeds.add(clientDescription);
     }
 
     public void removeClient(ClientDescription clientDescription) {
-        sids.remove(clientDescription);
+        seeds.remove(clientDescription);
     }
 
     @Override
@@ -91,7 +91,7 @@ public class FileDescription {
         if (size != that.size) return false;
         if (!name.equals(that.name)) return false;
         if (localPath != null ? !localPath.equals(that.localPath) : that.localPath != null) return false;
-        return sids != null ? sids.equals(that.sids) : that.sids == null;
+        return seeds != null ? seeds.equals(that.seeds) : that.seeds == null;
     }
 
     @Override
@@ -100,7 +100,7 @@ public class FileDescription {
         result = 31 * result + name.hashCode();
         result = 31 * result + (int) (size ^ (size >>> 32));
         result = 31 * result + (localPath != null ? localPath.hashCode() : 0);
-        result = 31 * result + (sids != null ? sids.hashCode() : 0);
+        result = 31 * result + (seeds != null ? seeds.hashCode() : 0);
         return result;
     }
 }

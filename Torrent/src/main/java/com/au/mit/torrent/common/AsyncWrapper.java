@@ -14,12 +14,42 @@ import java.util.function.Supplier;
 public class AsyncWrapper {
     private int maxCounter = 0;
     private int currentCounter = 0;
+    private IOSupplier<Integer> readInteractionSupplier = null;
+    private IOSupplier<Integer> writeInteractionSupplier = null;
 
     /**
      * Should be called at first in every method, which use wrapping
      */
-    public void resetCounter() {
+    public void reset() throws IOException {
         currentCounter = 0;
+        if (readInteractionSupplier != null) {
+            Integer res = readInteractionSupplier.get();
+            readInteractionSupplier = null;
+            if (res == null) {
+                throw new AsyncReadRequestNotCompleteException();
+            }
+            if (res == -1) {
+                throw new EmptyChannelException();
+            }
+        }
+        if (writeInteractionSupplier != null) {
+            Integer res = writeInteractionSupplier.get();
+            writeInteractionSupplier = null;
+            if (res == null) {
+                throw new AsyncWriteRequestNotCompleteException();
+            }
+            if (res == -1) {
+                throw new EmptyChannelException();
+            }
+        }
+    }
+
+    public void setReadInteractionSupplier(IOSupplier<Integer> supplier) {
+        readInteractionSupplier = supplier;
+    }
+
+    public void setWriteInteractionSupplier(IOSupplier<Integer> supplier) {
+        writeInteractionSupplier = supplier;
     }
 
     /**
@@ -29,7 +59,7 @@ public class AsyncWrapper {
      * @param <T> return type of the supplier
      * @throws AsyncReadRequestNotCompleteException throws if supplier returns null
      */
-    public <T> void wrapRead(Supplier<T> supplier) throws AsyncReadRequestNotCompleteException {
+    public <T> void wrapRead(IOSupplier<T> supplier) throws IOException {
         if (currentCounter == maxCounter) {
             T res = supplier.get();
             if (res == null) {
@@ -47,7 +77,7 @@ public class AsyncWrapper {
      * @param <T> return type of the supplier
      * @throws AsyncWriteRequestNotCompleteException throws if supplier returns null
      */
-    public <T> void wrapWrite(Supplier<T> supplier) throws AsyncWriteRequestNotCompleteException {
+    public <T> void wrapWrite(IOSupplier<T> supplier) throws IOException {
         if (currentCounter == maxCounter) {
             T res = supplier.get();
             if (res == null) {
@@ -123,6 +153,28 @@ public class AsyncWrapper {
     }
 
     /**
+     * Wraps supplier for channel interaction, which should return null if the operation still incomplete,
+     * -1 if the nio channel is empty and any other value in the rest cases
+     * @param supplier supplier with channel interaction
+     * @throws AsyncReadRequestNotCompleteException if supplier returns null
+     * @throws EmptyChannelException if supplier returns -1
+     * @throws IOException if supplier throws IOException
+     */
+    public void channelWriteInteract(IOSupplier<Integer> supplier) throws IOException {
+        if (currentCounter == maxCounter) {
+            Integer res = supplier.get();
+            if (res == null) {
+                throw new AsyncWriteRequestNotCompleteException();
+            }
+            if (res == -1) {
+                throw new EmptyChannelException();
+            }
+            maxCounter++;
+        }
+        currentCounter++;
+    }
+
+    /**
      * Wraps forloop iteration from the channel processing method
      * @param start initial value for loop variable (inclusive)
      * @param end finite value for loop variable (exclusive)
@@ -160,8 +212,6 @@ public class AsyncWrapper {
         for (; i < end; i++) {
             for (; j < functions.length; j++) {
                 wrapFunction.apply(i, functions[j]);
-                currentCounter++;
-                maxCounter++;
             }
             j = 0;
         }

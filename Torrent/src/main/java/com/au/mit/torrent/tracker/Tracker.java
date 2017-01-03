@@ -14,5 +14,5 @@ public interface Tracker {
     Map<Integer, FileDescription> getFileDescriptions();
     int addFileDescription(FileDescription fileDescription);
     void addRequestHandler(SocketChannel channel, TrackerRequest request) throws ClosedChannelException;
-    boolean updateSid(ClientDescription client, Set<Integer> fileIds);
+    boolean updateSeed(ClientDescription client, Set<Integer> fileIds);
 }

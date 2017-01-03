@@ -97,7 +97,7 @@ public class SingleThreadTracker implements Tracker {
     }
 
     @Override
-    public boolean updateSid(ClientDescription client, Set<Integer> fileIds) {
+    public boolean updateSeed(ClientDescription client, Set<Integer> fileIds) {
         client.updateAccessTime();
         clients.put(client.getAddress(), client);
         for (Integer fileId : fileIds) {

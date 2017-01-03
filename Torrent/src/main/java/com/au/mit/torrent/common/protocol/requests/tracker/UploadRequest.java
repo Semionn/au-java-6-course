@@ -45,7 +45,7 @@ public class UploadRequest implements TrackerRequest {
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {
         try {
-            async.resetCounter();
+            async.reset();
             async.channelInteract(() -> buffer.readFrom(channel));
             async.wrapRead(() -> fileName = buffer.getString());
             async.wrapRead(() -> fileSize = buffer.getLong());
@@ -57,10 +57,10 @@ public class UploadRequest implements TrackerRequest {
             });
             async.channelInteract(() -> writeBuffer.writeTo(channel));
         } catch (AsyncReadRequestNotCompleteException e) {
-            async.channelInteract(() -> buffer.readFrom(channel));
+            async.setReadInteractionSupplier(() -> buffer.readFrom(channel));
             return false;
         } catch (AsyncWriteRequestNotCompleteException e) {
-            async.channelInteract(() -> buffer.writeTo(channel));
+            async.setWriteInteractionSupplier(() -> buffer.writeTo(channel));
             return false;
         }
         return true;

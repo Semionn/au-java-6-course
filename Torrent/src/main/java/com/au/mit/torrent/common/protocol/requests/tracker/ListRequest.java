@@ -70,7 +70,7 @@ public class ListRequest implements TrackerRequest {
             async.channelInteract(() -> buffer.writeTo(channel));
             return true;
         } catch (AsyncWriteRequestNotCompleteException e) {
-            async.channelInteract(() -> buffer.writeTo(channel));
+            async.setWriteInteractionSupplier(() -> buffer.writeTo(channel));
             return false;
         }
     }

@@ -47,7 +47,7 @@ public class GetRequest implements ClientRequest {
     @Override
     public boolean handle(SocketChannel channel, PeerServer peerServer) throws IOException {
         try {
-            async.resetCounter();
+            async.reset();
             async.channelInteract(() -> bufferRead.readFrom(channel));
             async.wrapRead(() -> fileID = bufferRead.getInt());
             async.wrapRead(() -> partNum = bufferRead.getInt());

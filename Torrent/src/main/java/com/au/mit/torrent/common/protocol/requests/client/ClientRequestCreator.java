@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 /**
- * Class for client and tracker sides handling of new connection between peers
+ * Class for client and tracker seedes handling of new connection between peers
  */
 public class ClientRequestCreator implements ClientRequest {
     private ClientDescription client;

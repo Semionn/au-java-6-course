@@ -111,7 +111,7 @@ public class ClientImpl implements Client {
         listRequest();
         if (trackerFiles.containsKey(fileID)) {
             final FileDescription fileDescription = trackerFiles.get(fileID);
-            final Set<ClientAddress> seeds = fileDescription.getSidsAddresses();
+            final Set<ClientAddress> seeds = fileDescription.getSeedsAddresses();
 
             final HashSet<PeerDescription> peerDescriptions = new HashSet<>();
             final Iterator<ClientAddress> seedsIterator = seeds.iterator();
@@ -215,13 +215,13 @@ public class ClientImpl implements Client {
         stringBuilder.append(String.format("ID; Name; Size; Seeds%n"));
         for (FileDescription file : trackerFiles.values()) {
             stringBuilder.append(String.format("%d; %s; %d; %d%n", file.getId(),
-                    file.getName(), file.getSize(), file.getSids().size()));
-            Set<ClientAddress> sids = sendRequest(trackerHostname, trackerPort,
+                    file.getName(), file.getSize(), file.getSeeds().size()));
+            Set<ClientAddress> seeds = sendRequest(trackerHostname, trackerPort,
                     (channel) -> SourceRequest.send(channel, file.getId()));
-            file.setSidsAddresses(sids);
-            if (sids != null) {
-                for (ClientAddress sid : sids) {
-                    stringBuilder.append(String.format("\tSeed: %s:%s%n", sid.getHostIP(), sid.getPort()));
+            file.setSeedsAddresses(seeds);
+            if (seeds != null) {
+                for (ClientAddress seed : seeds) {
+                    stringBuilder.append(String.format("\tSeed: %s:%s%n", seed.getHostIP(), seed.getPort()));
                 }
             }
         }

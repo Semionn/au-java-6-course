@@ -1,10 +1,11 @@
 package com.au.mit.torrent;
 
 import com.au.mit.torrent.client.ClientImpl;
+import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.SmartBuffer;
 import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.common.protocol.FileDescription;
-import com.au.mit.torrent.common.protocol.requests.tracker.ListRequest;
+import com.au.mit.torrent.common.protocol.requests.tracker.*;
 import com.au.mit.torrent.tracker.SingleThreadTracker;
 import com.au.mit.torrent.tracker.Tracker;
 import org.junit.Test;
@@ -12,17 +13,18 @@ import org.junit.runner.RunWith;
 import org.mockito.invocation.InvocationOnMock;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 
 @RunWith(PowerMockRunner.class)
@@ -121,7 +123,7 @@ public class TorrentTrackerTest {
         when(mockedTracker.getFileDescriptions()).thenReturn(fileDescriptions);
 
         class MockedChannelImpl {
-            // channel reading states
+            // channel states
             private final int READ_FILES_COUNT = 0;
             private final int READ_FILE_ID = 1;
             private final int READ_FILE_NAME = 2;
@@ -132,8 +134,9 @@ public class TorrentTrackerTest {
             private int fileDescriptionsCount;
             private final Map<Integer, FileDescription> fileDescriptions = new HashMap<>();
 
-            private Integer read(InvocationOnMock invocationOnMock) {
+            private Integer write(InvocationOnMock invocationOnMock) {
                 ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int writeCount = buffer.position();
                 int id = 0;
                 String name = "";
                 long size = 0;
@@ -159,7 +162,7 @@ public class TorrentTrackerTest {
                         fileDescriptions.put(id, new FileDescription(id, name, size));
                     }
                 }
-                return buffer.limit();
+                return buffer.position() - writeCount;
             }
 
             int getFileDescriptionsCount() {
@@ -173,11 +176,11 @@ public class TorrentTrackerTest {
 
         final SocketChannel mockedChannel = mock(SocketChannel.class);
         final MockedChannelImpl mockedChannelImpl = new MockedChannelImpl();
-        when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::read);
+        when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::write);
 
         final ClientDescription mockedClient = mock(ClientDescription.class);
         final ListRequest listRequest = new ListRequest(mockedClient);
-        listRequest.handle(mockedChannel, mockedTracker);
+        tryHandle(mockedTracker, mockedChannel, listRequest);
 
         assertEquals(fileDescriptions.size(), mockedChannelImpl.getFileDescriptionsCount());
         assertEquals(fileDescriptions, mockedChannelImpl.getFileDescriptions());
@@ -185,4 +188,285 @@ public class TorrentTrackerTest {
         verify(mockedTracker).getFileDescriptions();
     }
 
+
+    @Test
+    public void testSourceRequest() throws IOException {
+        final Tracker mockedTracker = mock(SingleThreadTracker.class);
+        Set<ClientAddress> seedAddresses = new HashSet<ClientAddress>() {{
+            add(new ClientAddress("1.2.3.4", (short) 80));
+            add(new ClientAddress("255.255.255.255", (short) 42));
+        }};
+        final Map<Integer, FileDescription> fileDescriptions = new HashMap<Integer, FileDescription>() {{
+            final String file1Name = "file1.txt";
+            final int file1Size = 13;
+            final FileDescription fd = new FileDescription(0, file1Name, file1Size);
+            put(0, fd);
+            fd.setSeedsAddresses(seedAddresses);
+        }};
+        when(mockedTracker.getFileDescriptions()).thenReturn(fileDescriptions);
+
+        class MockedChannelImpl {
+            // channel states
+            private final int WRITE_FILE_ID = 0;
+            private final int READ_SEEDS_COUNT = 1;
+            private final int READ_SEED_IP = 2;
+            private final int READ_SEED_PORT = 3;
+
+            private int currentChannelState = WRITE_FILE_ID;
+            private final FileDescription fileDescription;
+            private int seedsCount = 0;
+            private Set<ClientAddress> seedAddresses = new HashSet<>();
+
+            public MockedChannelImpl(FileDescription fileDescription) {
+                this.fileDescription = fileDescription;
+            }
+
+            private Integer read(InvocationOnMock invocationOnMock) {
+                ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int readCount = buffer.position();
+                switch (currentChannelState) {
+                    case WRITE_FILE_ID:
+                        buffer.putInt(fileDescription.getId());
+                        currentChannelState++;
+                        break;
+                    default:
+                        buffer.putInt(-1);
+                        break;
+                }
+                return buffer.position() - readCount;
+            }
+
+            private Integer write(InvocationOnMock invocationOnMock) {
+                ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int writeCount = buffer.position();
+                String ip = "";
+                short port = 0;
+                while (buffer.hasRemaining()) {
+                    switch (currentChannelState) {
+                        case READ_SEEDS_COUNT:
+                            seedsCount = buffer.getInt();
+                            break;
+                        case READ_SEED_IP:
+                            ip = Integer.toString(buffer.get() + 128);
+                            ip += "." + Integer.toString(buffer.get() + 128);
+                            ip += "." + Integer.toString(buffer.get() + 128);
+                            ip += "." + Integer.toString(buffer.get() + 128);
+                            break;
+                        case READ_SEED_PORT:
+                            port = buffer.getShort();
+                            break;
+                    }
+                    if (currentChannelState != READ_SEED_PORT) {
+                        currentChannelState++;
+                    } else {
+                        currentChannelState = READ_SEED_IP;
+                        seedAddresses.add(new ClientAddress(ip, port));
+                    }
+                }
+                return buffer.position() - writeCount;
+            }
+
+            Set<ClientAddress> getSeedAddresses() {
+                return seedAddresses;
+            }
+
+            int getSeedsCount() {
+                return seedsCount;
+            }
+        }
+
+        final SocketChannel mockedChannel = mock(SocketChannel.class);
+        final MockedChannelImpl mockedChannelImpl = new MockedChannelImpl(fileDescriptions.get(0));
+        when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::write);
+        when(mockedChannel.read(any(ByteBuffer.class))).then(mockedChannelImpl::read);
+
+        final ClientDescription mockedClient = mock(ClientDescription.class);
+        final SourceRequest sourceRequest = new SourceRequest(mockedClient);
+        tryHandle(mockedTracker, mockedChannel, sourceRequest);
+
+        assertEquals(seedAddresses.size(), mockedChannelImpl.getSeedsCount());
+        assertEquals(seedAddresses, mockedChannelImpl.getSeedAddresses());
+        assertEquals(sourceRequest.getClient(), mockedClient);
+        verify(mockedTracker).getFileDescriptions();
+    }
+
+    @Test
+    public void testUpdateRequest() throws IOException {
+        final Tracker mockedTracker = mock(SingleThreadTracker.class);
+        final Map<Integer, FileDescription> fileDescriptions = new HashMap<Integer, FileDescription>() {{
+            final String file1Name = "file1.txt";
+            final int file1Size = 13;
+            final FileDescription fd = new FileDescription(0, file1Name, file1Size);
+            put(0, fd);
+        }};
+        when(mockedTracker.getFileDescriptions()).thenReturn(fileDescriptions);
+        final boolean isUpdated = true;
+        when(mockedTracker.updateSeed(any(), any())).thenReturn(isUpdated);
+
+        class MockedChannelImpl {
+            // channel states
+            private final int WRITE_CLIENT_PORT = 0;
+            private final int WRITE_FILES_COUNT = 1;
+            private final int WRITE_FILE_ID = 2;
+            private final int READ_UPDATED_CHECK = 2;
+
+            private int currentChannelState = WRITE_CLIENT_PORT;
+            private final short clientPort;
+            private final List<Integer> fileIDs;
+            private int fileNum = 0;
+
+            private boolean isUpdated = false;
+
+            public MockedChannelImpl(short clientPort, Map<Integer, FileDescription> fileDescriptions) {
+                this.clientPort = clientPort;
+                this.fileIDs = fileDescriptions.values().stream()
+                        .map(FileDescription::getId).collect(Collectors.toList());
+            }
+
+            private Integer read(InvocationOnMock invocationOnMock) {
+                ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int readCount = buffer.position();
+                switch (currentChannelState) {
+                    case WRITE_CLIENT_PORT:
+                        buffer.putShort(clientPort);
+                        currentChannelState++;
+                        break;
+                    case WRITE_FILES_COUNT:
+                        buffer.putInt(fileIDs.size());
+                        currentChannelState++;
+                        break;
+                    case WRITE_FILE_ID:
+                        buffer.putInt(fileIDs.get(fileNum));
+                        fileNum++;
+                        break;
+                    default:
+                        buffer.putInt(-1);
+                        break;
+                }
+                return buffer.position() - readCount;
+            }
+
+            private Integer write(InvocationOnMock invocationOnMock) {
+                ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int writeCount = buffer.position();
+                while (buffer.hasRemaining()) {
+                    switch (currentChannelState) {
+                        case READ_UPDATED_CHECK:
+                            isUpdated = buffer.get() == 1;
+                            break;
+                    }
+                }
+                return buffer.position() - writeCount;
+            }
+
+            boolean isUpdated() {
+                return isUpdated;
+            }
+
+            int getFileNum() {
+                return fileNum;
+            }
+        }
+
+        final short clientPort = (short) 8080;
+        final MockedChannelImpl mockedChannelImpl = new MockedChannelImpl(clientPort, fileDescriptions);
+
+        final SocketChannel mockedChannel = mock(SocketChannel.class);
+        when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::write);
+        when(mockedChannel.read(any(ByteBuffer.class))).then(mockedChannelImpl::read);
+
+        final ClientDescription mockedClient = mock(ClientDescription.class);
+        final UpdateRequest updateRequest = new UpdateRequest(mockedClient);
+        tryHandle(mockedTracker, mockedChannel, updateRequest);
+
+        assertEquals(fileDescriptions.size(), mockedChannelImpl.getFileNum());
+        assertEquals(isUpdated, mockedChannelImpl.isUpdated());
+        assertEquals(updateRequest.getClient(), mockedClient);
+        assertEquals(updateRequest.getClient().getLocalPort(), mockedClient.getLocalPort());
+    }
+
+    @Test
+    public void testUploadRequest() throws IOException {
+        final Tracker mockedTracker = mock(SingleThreadTracker.class);
+        final int fileID = 42;
+        when(mockedTracker.addFileDescription(any())).thenReturn(fileID);
+
+        class MockedChannelImpl {
+            // channel states
+            private final int WRITE_FILE_NAME = 0;
+            private final int WRITE_FILE_SIZE = 1;
+            private final int READ_FILE_ID = 2;
+
+            private int currentChannelState = WRITE_FILE_NAME;
+
+            private final String fileName;
+            private final long fileSize;
+            private int fileID;
+
+            public MockedChannelImpl(String fileName, long fileSize) {
+                this.fileName = fileName;
+                this.fileSize = fileSize;
+            }
+
+            private Integer read(InvocationOnMock invocationOnMock) {
+                ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int readCount = buffer.position();
+                switch (currentChannelState) {
+                    case WRITE_FILE_NAME:
+                        new SmartBuffer(buffer).putString(fileName);
+                        currentChannelState++;
+                        break;
+                    case WRITE_FILE_SIZE:
+                        buffer.putLong(fileSize);
+                        currentChannelState++;
+                        break;
+                }
+                return buffer.position() - readCount;
+            }
+
+            private Integer write(InvocationOnMock invocationOnMock) {
+                ByteBuffer buffer = (ByteBuffer) invocationOnMock.getArguments()[0];
+                int writeCount = buffer.position();
+                fileID = 0;
+                while (buffer.hasRemaining()) {
+                    switch (currentChannelState) {
+                        case READ_FILE_ID:
+                            fileID = buffer.getInt();
+                            currentChannelState++;
+                            break;
+                    }
+                }
+                return buffer.position() - writeCount;
+            }
+
+            int getFileID() {
+                return fileID;
+            }
+        }
+        final int fileSize = 13;
+        final String fileName = "test1.txt";
+        final MockedChannelImpl mockedChannelImpl = new MockedChannelImpl(fileName, fileSize);
+
+        final SocketChannel mockedChannel = mock(SocketChannel.class);
+        when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::write);
+        when(mockedChannel.read(any(ByteBuffer.class))).then(mockedChannelImpl::read);
+
+        final ClientDescription mockedClient = mock(ClientDescription.class);
+        final UploadRequest uploadRequest = new UploadRequest(mockedClient);
+        tryHandle(mockedTracker, mockedChannel, uploadRequest);
+
+        assertEquals(uploadRequest.getClient(), mockedClient);
+        assertEquals(fileID, mockedChannelImpl.getFileID());
+        verify(mockedTracker).addFileDescription(new FileDescription(fileName, fileSize));
+    }
+
+    private void tryHandle(Tracker mockedTracker, SocketChannel mockedChannel, TrackerRequest trackerRequest) throws IOException {
+        int ATTEMPTS_COUNT = 5;
+        int k = 0;
+        boolean finished = false;
+        while (k < ATTEMPTS_COUNT && !(finished = trackerRequest.handle(mockedChannel, mockedTracker))) {
+            k++;
+        }
+        assertTrue(finished);
+    }
 }
