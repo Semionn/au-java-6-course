@@ -7,6 +7,22 @@
     <groupId>com.au.mit</groupId>
     <artifactId>FTP</artifactId>
     <version>1.0-SNAPSHOT</version>
+
+    <profiles>
+        <profile>
+            <id>server</id>
+            <properties>
+                <mainClass>com.au.mit.ftp.server.ServerApp</mainClass>
+            </properties>
+        </profile>
+        <profile>
+            <id>client</id>
+            <properties>
+                <mainClass>com.au.mit.ftp.client.ClientApp</mainClass>
+            </properties>
+        </profile>
+    </profiles>
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -32,7 +48,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>fully.qualified.MainClass</mainClass>
+                            <mainClass>${mainClass}</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
