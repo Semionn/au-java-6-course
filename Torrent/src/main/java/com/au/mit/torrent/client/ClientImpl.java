@@ -2,19 +2,20 @@ package com.au.mit.torrent.client;
 
 import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.PeerFileStat;
-import com.au.mit.torrent.common.TorrentFile;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.exceptions.DisconnectException;
 import com.au.mit.torrent.common.exceptions.RequestException;
 import com.au.mit.torrent.common.protocol.FileDescription;
-import com.au.mit.torrent.common.protocol.requests.client.StatRequest;
 import com.au.mit.torrent.common.protocol.requests.client.GetRequest;
+import com.au.mit.torrent.common.protocol.requests.client.StatRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.ListRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.SourceRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.UpdateRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.UploadRequest;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
@@ -34,7 +35,6 @@ public class ClientImpl implements Client {
     private final static Logger logger = Logger.getLogger(ClientImpl.class.getName());
 
     private final Set<FileDescription> localFiles;
-    private final Set<TorrentFile> torrentFiles;
     private final short localPort;
     private final PeerServer peerServer;
     private Map<Integer, FileDescription> trackerFiles = new HashMap<>();
@@ -49,7 +49,6 @@ public class ClientImpl implements Client {
 
     public ClientImpl(short localPort, Set<Path> filesPaths) {
         this.localPort = localPort;
-        torrentFiles = new HashSet<>();
         localFiles = filesPaths.stream()
                 .map(path -> new FileDescription(path.getFileName().toString(), new File(path.toString()).length()))
                 .collect(Collectors.toSet());
@@ -114,9 +113,7 @@ public class ClientImpl implements Client {
             final Set<ClientAddress> seeds = fileDescription.getSeedsAddresses();
 
             final HashSet<PeerDescription> peerDescriptions = new HashSet<>();
-            final Iterator<ClientAddress> seedsIterator = seeds.iterator();
-            while (seedsIterator.hasNext()) {
-                final ClientAddress peerAddress = seedsIterator.next();
+            for (ClientAddress peerAddress : seeds) {
                 final PeerFileStat peerFileStat = statRequest(fileDescription, peerAddress);
                 peerDescriptions.add(new PeerDescription(peerAddress, peerFileStat));
             }

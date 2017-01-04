@@ -2,8 +2,11 @@ package com.au.mit.torrent.common;
 
 import java.util.Objects;
 
+/**
+ * Data class for storing tracker client address
+ */
 public class ClientAddress {
-    private String hostIP;
+    private final String hostIP;
     private short port;
 
     public ClientAddress(String hostIP) {
@@ -28,7 +31,7 @@ public class ClientAddress {
     }
 
     public byte getIPByte(byte num) {
-        return Byte.valueOf((byte)(Integer.valueOf(hostIP.split("\\.")[num])-128));
+        return (byte)(Integer.valueOf(hostIP.split("\\.")[num])-128);
     }
 
     public static int IPByteToInt(byte b) {

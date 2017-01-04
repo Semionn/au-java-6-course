@@ -18,6 +18,9 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * Torrent tracker server implementation with nonblocking nio
+ */
 public class SingleThreadTracker implements Tracker {
     private final static short DEFAULT_PORT = 8081;
     private final static String DEFAULT_INTERFACE = "0.0.0.0";
@@ -100,10 +103,11 @@ public class SingleThreadTracker implements Tracker {
     public boolean updateSeed(ClientDescription client, Set<Integer> fileIds) {
         client.updateAccessTime();
         clients.put(client.getAddress(), client);
+        if (fileIds.stream().anyMatch(fileId -> !fileDescriptions.containsKey(fileId))) {
+            return false;
+        }
+        client.clearFileDescriptions();
         for (Integer fileId : fileIds) {
-            if (!fileDescriptions.containsKey(fileId)) {
-                return false;
-            }
             client.addFile(fileDescriptions.get(fileId));
         }
         return true;

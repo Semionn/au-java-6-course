@@ -2,6 +2,9 @@ package com.au.mit.torrent.common;
 
 import java.util.Set;
 
+/**
+ * Class for storing information about available parts for file with specified ID
+ */
 public class PeerFileStat {
     public final static int PART_SIZE = 4096;
 
@@ -21,14 +24,23 @@ public class PeerFileStat {
         return parts;
     }
 
+    /**
+     * Returns position of part of the file by number of the part
+     */
     public static int getPartPosition(int partNum) {
         return partNum * PART_SIZE;
     }
 
+    /**
+     * Returns count of parts of file with specified size
+     */
     public static int getPartsCount(long fileSize) {
         return (int) (fileSize / PART_SIZE) + (fileSize % PART_SIZE > 0 ? 1 : 0);
     }
 
+    /**
+     * Returns PART_SIZE if the part is not last in the file, and the rest length otherwise
+     */
     public static int calcPartSize(int partNum, long fileSize) {
         if (getPartsCount(fileSize) == partNum + 1) {
             return (int) (fileSize - (getPartsCount(fileSize) - 1) * PART_SIZE);
