@@ -13,17 +13,10 @@ import java.nio.channels.SocketChannel;
  */
 public class TrackerRequestCreator implements TrackerRequest {
 
-    private ClientDescription client;
     private ByteBuffer buffer;
 
-    public TrackerRequestCreator(ClientDescription client) {
-        this.client = client;
+    public TrackerRequestCreator() {
         this.buffer = ByteBuffer.allocate(Integer.BYTES);
-    }
-
-    @Override
-    public ClientDescription getClient() {
-        return client;
     }
 
     @Override
@@ -40,16 +33,16 @@ public class TrackerRequestCreator implements TrackerRequest {
             TrackerRequest request = null;
             switch (requestType) {
                 case LIST:
-                    request = new ListRequest(client);
+                    request = new ListRequest();
                     break;
                 case UPLOAD:
-                    request = new UploadRequest(client);
+                    request = new UploadRequest();
                     break;
                 case SOURCES:
-                    request = new SourceRequest(client);
+                    request = new SourceRequest();
                     break;
                 case UPDATE:
-                    request = new UpdateRequest(client);
+                    request = new UpdateRequest();
                     break;
                 case NONE:
                     break;

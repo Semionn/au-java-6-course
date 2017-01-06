@@ -103,4 +103,13 @@ public class FileDescription {
         result = 31 * result + (seeds != null ? seeds.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "FileDescription{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", size=" + size +
+                '}';
+    }
 }

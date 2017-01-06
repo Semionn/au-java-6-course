@@ -22,8 +22,12 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,6 +46,9 @@ public class TorrentTrackerTest {
         final int port = 8081;
 
         final int NUMBERS_COUNT = 10000;
+
+        final Path torrentsFolder = Paths.get("torrents_test");
+        new File(torrentsFolder.toAbsolutePath().toString()).deleteOnExit();
 
         Tracker tracker = new SingleThreadTracker(hostname, port);
         Thread trackerThread = new Thread(tracker::start);
@@ -65,7 +72,7 @@ public class TorrentTrackerTest {
         fileBWriter.close();
         fileB.deleteOnExit();
 
-        final ClientImpl clientA = new ClientImpl((short) (port + 1));
+        final ClientImpl clientA = new ClientImpl((short) (port + 1), torrentsFolder);
         Thread clientAThread = new Thread(() -> {
             clientA.connect(hostname, port);
             clientA.uploadFile(fileA.getAbsolutePath());
@@ -74,7 +81,7 @@ public class TorrentTrackerTest {
         clientAThread.start();
         clientAThread.join();
 
-        final ClientImpl clientB = new ClientImpl((short) (port + 2));
+        final ClientImpl clientB = new ClientImpl((short) (port + 2), torrentsFolder);
         Thread clientBThread = new Thread(() -> {
             clientB.connect(hostname, port);
             clientB.uploadFile(fileB.getAbsolutePath());
@@ -95,7 +102,8 @@ public class TorrentTrackerTest {
         clientBThread.start();
         clientBThread.join();
 
-        final File fileADownloaded = new File(fileA.getName());
+        final String downloadedFileAPath = torrentsFolder.resolve(fileA.getName()).toAbsolutePath().toString();
+        final File fileADownloaded = new File(downloadedFileAPath);
         assertTrue(fileADownloaded.exists());
 
         final Scanner fileAScanner = new Scanner(fileADownloaded);
@@ -104,7 +112,8 @@ public class TorrentTrackerTest {
         }
         fileADownloaded.deleteOnExit();
 
-        final File fileBDownloaded = new File(fileB.getName());
+        final String downloadedFileBPath = torrentsFolder.resolve(fileB.getName()).toAbsolutePath().toString();
+        final File fileBDownloaded = new File(downloadedFileBPath);
         assertTrue(fileBDownloaded.exists());
 
         final Scanner fileBScanner = new Scanner(fileBDownloaded);
@@ -186,12 +195,11 @@ public class TorrentTrackerTest {
         when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::write);
 
         final ClientDescription mockedClient = mock(ClientDescription.class);
-        final ListRequest listRequest = new ListRequest(mockedClient);
+        final ListRequest listRequest = new ListRequest();
         tryHandleTrackerRequest(mockedTracker, mockedChannel, listRequest);
 
         assertEquals(fileDescriptions.size(), mockedChannelImpl.getFileDescriptionsCount());
         assertEquals(fileDescriptions, mockedChannelImpl.getFileDescriptions());
-        assertEquals(listRequest.getClient(), mockedClient);
         verify(mockedTracker).getFileDescriptions();
     }
 
@@ -288,12 +296,11 @@ public class TorrentTrackerTest {
         when(mockedChannel.read(any(ByteBuffer.class))).then(mockedChannelImpl::read);
 
         final ClientDescription mockedClient = mock(ClientDescription.class);
-        final SourceRequest sourceRequest = new SourceRequest(mockedClient);
+        final SourceRequest sourceRequest = new SourceRequest();
         tryHandleTrackerRequest(mockedTracker, mockedChannel, sourceRequest);
 
         assertEquals(seedAddresses.size(), mockedChannelImpl.getSeedsCount());
         assertEquals(seedAddresses, mockedChannelImpl.getSeedAddresses());
-        assertEquals(sourceRequest.getClient(), mockedClient);
         verify(mockedTracker).getFileDescriptions();
     }
 
@@ -373,6 +380,12 @@ public class TorrentTrackerTest {
                 return buffer.position() - writeCount;
             }
 
+            private Socket socket(InvocationOnMock invocationOnMock) {
+                final Socket mockedSocket = mock(Socket.class);
+                when(mockedSocket.getRemoteSocketAddress()).thenReturn(new InetSocketAddress("localhost", clientPort));
+                return mockedSocket;
+            }
+
             private boolean isUpdated() {
                 return isUpdated;
             }
@@ -388,15 +401,13 @@ public class TorrentTrackerTest {
         final SocketChannel mockedChannel = mock(SocketChannel.class);
         when(mockedChannel.write(any(ByteBuffer.class))).then(mockedChannelImpl::write);
         when(mockedChannel.read(any(ByteBuffer.class))).then(mockedChannelImpl::read);
+        when(mockedChannel.socket()).then(mockedChannelImpl::socket);
 
-        final ClientDescription mockedClient = mock(ClientDescription.class);
-        final UpdateRequest updateRequest = new UpdateRequest(mockedClient);
+        final UpdateRequest updateRequest = new UpdateRequest();
         tryHandleTrackerRequest(mockedTracker, mockedChannel, updateRequest);
 
         assertEquals(fileDescriptions.size(), mockedChannelImpl.getFileNum());
         assertEquals(isUpdated, mockedChannelImpl.isUpdated());
-        assertEquals(updateRequest.getClient(), mockedClient);
-        assertEquals(updateRequest.getClient().getLocalPort(), mockedClient.getLocalPort());
     }
 
     @Test
@@ -466,10 +477,9 @@ public class TorrentTrackerTest {
         when(mockedChannel.read(any(ByteBuffer.class))).then(mockedChannelImpl::read);
 
         final ClientDescription mockedClient = mock(ClientDescription.class);
-        final UploadRequest uploadRequest = new UploadRequest(mockedClient);
+        final UploadRequest uploadRequest = new UploadRequest();
         tryHandleTrackerRequest(mockedTracker, mockedChannel, uploadRequest);
 
-        assertEquals(uploadRequest.getClient(), mockedClient);
         assertEquals(fileID, mockedChannelImpl.getFileID());
         verify(mockedTracker).addFileDescription(new FileDescription(fileName, fileSize));
     }

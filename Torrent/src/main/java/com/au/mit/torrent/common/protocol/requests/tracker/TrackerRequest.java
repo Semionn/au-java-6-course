@@ -1,6 +1,5 @@
 package com.au.mit.torrent.common.protocol.requests.tracker;
 
-import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.tracker.Tracker;
 
 import java.io.IOException;
@@ -10,10 +9,10 @@ import java.nio.channels.SocketChannel;
  * Interface for handling reading operation from specified channel during the peer-to-tracker connection
  */
 public interface TrackerRequest {
-    /**
-     * Returns description of client, which initiates the connection
-     */
-    ClientDescription getClient();
+//    /**
+//     * Returns description of client, which initiates the connection
+//     */
+//    ClientDescription getClient();
 
     /**
      * Handler for channel reading operation

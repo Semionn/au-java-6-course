@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 public class UploadRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(UploadRequest.class.getName());
 
-    private ClientDescription client;
+//    private ClientDescription client;
     private SmartBuffer buffer;
     private AsyncWrapper async;
 
@@ -30,17 +30,17 @@ public class UploadRequest implements TrackerRequest {
     private Integer fileID = null;
     private SmartBuffer writeBuffer = null;
 
-    public UploadRequest(ClientDescription client) {
-        this.client = client;
+    public UploadRequest() {
+//        this.client = client;
         buffer = SmartBuffer.allocate(1024);
         async = new AsyncWrapper();
         writeBuffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES));
     }
-
-    @Override
-    public ClientDescription getClient() {
-        return client;
-    }
+//
+//    @Override
+//    public ClientDescription getClient() {
+//        return client;
+//    }
 
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {

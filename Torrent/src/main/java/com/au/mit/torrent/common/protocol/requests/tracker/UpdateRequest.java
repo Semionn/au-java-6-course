@@ -22,23 +22,17 @@ import java.util.logging.Logger;
 public class UpdateRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(UpdateRequest.class.getName());
 
-    private ClientDescription client;
     private SmartBuffer buffer;
     private AsyncWrapper async;
     private Short clientPort = null;
     private Integer filesCount = null;
     private Set<Integer> fileIds = new HashSet<>();
     private Boolean updated = null;
+    private ClientDescription client = null;
 
-    public UpdateRequest(ClientDescription client) {
-        this.client = client;
+    public UpdateRequest() {
         buffer = SmartBuffer.allocate(1024);
         async = new AsyncWrapper();
-    }
-
-    @Override
-    public ClientDescription getClient() {
-        return client;
     }
 
     @Override
@@ -48,12 +42,20 @@ public class UpdateRequest implements TrackerRequest {
             async.channelInteract(() -> buffer.readFrom(channel));
             async.wrapRead(() -> clientPort = buffer.getShort());
             async.wrapRead(() -> {
+                client = new ClientDescription(channel);
                 client.setLocalPort(clientPort);
                 return true;
             });
             async.wrapRead(() -> filesCount = buffer.getInt());
             async.forloopRead(0, filesCount, new AsyncWrapper.IOFunction[] {
-                    (i) -> fileIds.add(buffer.getInt()),
+                    (i) -> {
+                        final Integer id = buffer.getInt();
+                        if (id == null) {
+                            return null;
+                        }
+                        fileIds.add(id);
+                        return true;
+                    },
                     (i) -> buffer.readFrom(channel)
             });
             async.wrapRead(() -> updated = tracker.updateSeed(client, fileIds));

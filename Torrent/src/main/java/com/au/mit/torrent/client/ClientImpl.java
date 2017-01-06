@@ -37,23 +37,36 @@ public class ClientImpl implements Client {
     private final Set<FileDescription> localFiles;
     private final short localPort;
     private final PeerServer peerServer;
+    private final Path torrentFolder;
     private Map<Integer, FileDescription> trackerFiles = new HashMap<>();
     private SimplePeerChoosingStrategy peerChoosingStrategy = new SimplePeerChoosingStrategy(); //DI for losers
     private String trackerHostname = null;
     private Integer trackerPort = null;
     private Thread updateThread = null;
+    private boolean isConnected = false;
 
-    public ClientImpl(short localPort) {
-        this(localPort, new HashSet<>());
+    public ClientImpl(short localPort, Path torrentsFolder) {
+        this(localPort, new HashSet<>(), torrentsFolder);
     }
 
-    public ClientImpl(short localPort, Set<Path> filesPaths) {
+    public ClientImpl(short localPort, Set<Path> filesPaths, Path torrentsFolder) {
         this.localPort = localPort;
+        this.torrentFolder = torrentsFolder;
         localFiles = filesPaths.stream()
                 .map(path -> new FileDescription(path.getFileName().toString(), new File(path.toString()).length()))
                 .collect(Collectors.toSet());
         peerServer = new PeerServer(localPort);
-        new Thread(peerServer::start).start();
+        final Thread peerServerThread = new Thread(peerServer::start);
+        peerServerThread.setDaemon(true);
+        peerServerThread.start();
+    }
+
+    public Set<FileDescription> getLocalFiles() {
+        return localFiles;
+    }
+
+    public Map<Integer, FileDescription> getTrackerFiles() {
+        return trackerFiles;
     }
 
     @Override
@@ -63,6 +76,7 @@ public class ClientImpl implements Client {
 
     @Override
     public void connect(String hostname, int port) {
+        isConnected = false;
         if (updateThread != null) {
             updateThread.interrupt();
             updateThread = null;
@@ -70,6 +84,7 @@ public class ClientImpl implements Client {
         trackerHostname = hostname;
         trackerPort = port;
         updateRequest();
+        isConnected = true;
         listRequest();
         updateThread = new Thread(() -> {
             while (!Thread.interrupted()) {
@@ -121,9 +136,11 @@ public class ClientImpl implements Client {
             final Set<DownloadingDescription> downloadingDescriptions =
                     peerChoosingStrategy.getDownloadingDescription(new HashSet<>(), peerDescriptions);
 
+            new File(torrentFolder.toAbsolutePath().toString()).mkdirs();
             for (DownloadingDescription downloadingDescr : downloadingDescriptions) {
                 try {
-                    final RandomAccessFile file = new RandomAccessFile(new File(fileDescription.getLocalPath()), "rw");
+                    final Path filePath = torrentFolder.resolve(fileDescription.getLocalPath());
+                    final RandomAccessFile file = new RandomAccessFile(new File(filePath.toAbsolutePath().toString()), "rw");
                     Integer partNum = downloadingDescr.getPartNum();
                     final byte[] part = getRequest(fileID, partNum, downloadingDescr.getPeerDescription().getPeerAddress());
                     file.seek(PeerFileStat.getPartPosition(partNum));
@@ -153,7 +170,7 @@ public class ClientImpl implements Client {
 
     @Override
     public boolean isConnected() {
-        return trackerHostname != null && trackerPort != null;
+        return isConnected;
     }
 
     private void checkConnection() {

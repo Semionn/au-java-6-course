@@ -24,20 +24,10 @@ import java.util.logging.Logger;
 public class ListRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(ListRequest.class.getName());
 
-    private ClientDescription client;
     private List<FileDescription> fileDescriptions = null;
     private FileDescription fileDescription = null;
     private SmartBuffer buffer = SmartBuffer.allocate(1024);
     private AsyncWrapper async = new AsyncWrapper();
-
-    public ListRequest(ClientDescription client) {
-        this.client = client;
-    }
-
-    @Override
-    public ClientDescription getClient() {
-        return client;
-    }
 
     @Override
     public boolean handle(SocketChannel channel, Tracker tracker) throws IOException {

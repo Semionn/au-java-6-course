@@ -5,8 +5,8 @@ import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.exceptions.EmptyChannelException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
 import com.au.mit.torrent.common.protocol.FileDescription;
-import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequestCreator;
 import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequest;
+import com.au.mit.torrent.common.protocol.requests.tracker.TrackerRequestCreator;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -45,7 +45,9 @@ public class SingleThreadTracker implements Tracker {
 
     @Override
     public Map<Integer, FileDescription> getFileDescriptions() {
-        return fileDescriptions;
+        return fileDescriptions.entrySet().stream()
+                .filter(entry -> entry.getValue().getSeeds().size() > 0)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override
@@ -119,10 +121,10 @@ public class SingleThreadTracker implements Tracker {
         channel.configureBlocking(false);
         Socket socket = channel.socket();
         SocketAddress remoteAddr = socket.getRemoteSocketAddress();
-        logger.info("Connected to peer: " + remoteAddr);
+        String remoteHostname = ((InetSocketAddress) remoteAddr).getHostName();
+        logger.info("Connected to peer: " + remoteHostname);
 
-        ClientDescription client = new ClientDescription(channel);
-        channel.register(selector, SelectionKey.OP_READ, new TrackerRequestCreator(client));
+        channel.register(selector, SelectionKey.OP_READ, new TrackerRequestCreator());
     }
 
     private void read(SelectionKey key) throws IOException {

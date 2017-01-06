@@ -1,5 +1,7 @@
 package com.au.mit.torrent.client;
 
+import java.nio.file.Paths;
+
 /**
  * Console application with ClientImpl implementation of torrent client
  */
@@ -15,7 +17,7 @@ public class TrackerClientApp {
             publishedFile = args[0];
         }
 
-        final ClientImpl client = new ClientImpl(PORT);
+        final ClientImpl client = new ClientImpl(PORT, Paths.get("."));
         client.connect(TRACKER_HOSTNAME, TRACKER_PORT);
         if (publishedFile != null) {
             client.uploadFile(publishedFile);

@@ -22,7 +22,6 @@ import java.util.logging.Logger;
 public class SourceRequest implements TrackerRequest {
     private final static Logger logger = Logger.getLogger(SourceRequest.class.getName());
 
-    private ClientDescription client;
     private SmartBuffer buffer;
     private AsyncWrapper async;
 
@@ -33,16 +32,10 @@ public class SourceRequest implements TrackerRequest {
     private List<ClientDescription> sids = null;
     private SmartBuffer writeBuffer = null;
 
-    public SourceRequest(ClientDescription client) {
-        this.client = client;
+    public SourceRequest() {
         async = new AsyncWrapper();
         buffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES));
         writeBuffer = SmartBuffer.allocate(1024);
-    }
-
-    @Override
-    public ClientDescription getClient() {
-        return client;
     }
 
     @Override

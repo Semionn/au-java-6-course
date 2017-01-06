@@ -204,7 +204,9 @@ public class SmartBuffer {
 
     public void setWriteState() {
         if (isReadState) {
+            compact();
             buffer.flip();
+            buffer.position(buffer.limit());
             buffer.limit(buffer.capacity());
             isReadState = false;
         }
