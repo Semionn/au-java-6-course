@@ -31,9 +31,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -90,6 +88,14 @@ public class TorrentTrackerTest {
         clientBThread.start();
         clientBThread.join();
 
+        final String downloadedFileAPath = torrentsFolder.resolve(fileA.getName()).toAbsolutePath().toString();
+        final File fileADownloaded = new File(downloadedFileAPath);
+        fileADownloaded.deleteOnExit();
+
+        final String downloadedFileBPath = torrentsFolder.resolve(fileB.getName()).toAbsolutePath().toString();
+        final File fileBDownloaded = new File(downloadedFileBPath);
+        fileBDownloaded.deleteOnExit();
+
         clientAThread = new Thread(() -> {
             clientA.downloadFile(1);
         }, "client-A");
@@ -102,25 +108,18 @@ public class TorrentTrackerTest {
         clientBThread.start();
         clientBThread.join();
 
-        final String downloadedFileAPath = torrentsFolder.resolve(fileA.getName()).toAbsolutePath().toString();
-        final File fileADownloaded = new File(downloadedFileAPath);
         assertTrue(fileADownloaded.exists());
 
         final Scanner fileAScanner = new Scanner(fileADownloaded);
         for (int i = 0; i < NUMBERS_COUNT; i++) {
             assertEquals(i, fileAScanner.nextInt());
         }
-        fileADownloaded.deleteOnExit();
-
-        final String downloadedFileBPath = torrentsFolder.resolve(fileB.getName()).toAbsolutePath().toString();
-        final File fileBDownloaded = new File(downloadedFileBPath);
         assertTrue(fileBDownloaded.exists());
 
         final Scanner fileBScanner = new Scanner(fileBDownloaded);
         for (int i = 0; i < NUMBERS_COUNT; i++) {
             assertEquals(NUMBERS_COUNT - i, fileBScanner.nextInt());
         }
-        fileBDownloaded.deleteOnExit();
 
         trackerThread.join(1000);
     }

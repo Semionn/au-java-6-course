@@ -6,7 +6,7 @@ import java.util.Set;
  * Class for storing information about available parts for file with specified ID
  */
 public class PeerFileStat {
-    public final static int PART_SIZE = 4096;
+    public final static int PART_SIZE = 32 * 1024;
 
     private final int fileID;
     private final Set<Integer> parts;

@@ -51,8 +51,12 @@ public class GetRequest implements ClientRequest {
             async.wrapRead(() -> partNum = bufferRead.getInt());
             async.wrapWrite(() -> {
                 peerFileStat = peerServer.getPeerFileStat(fileID);
-                if (peerFileStat != null) {
-                    inputStream = peerServer.readFilePart(fileID, partNum);
+                try {
+                    if (peerFileStat == null) {
+                        inputStream = new ByteArrayInputStream(new byte[PeerFileStat.PART_SIZE]);
+                    } else {
+                        inputStream = peerServer.readFilePart(fileID, partNum);
+                    }
                     byte[] tempBuf = new byte[PeerFileStat.PART_SIZE];
                     bufferWrite.setWriteState();
                     try {
@@ -62,9 +66,9 @@ public class GetRequest implements ClientRequest {
                         logger.log(Level.WARNING, "File reading failed", e);
                     }
                     return true;
+                } finally {
+                    inputStream.close();
                 }
-                inputStream = new ByteArrayInputStream(new byte[PeerFileStat.PART_SIZE]);
-                return true;
             });
 
             async.channelInteract(() -> bufferWrite.writeTo(channel));

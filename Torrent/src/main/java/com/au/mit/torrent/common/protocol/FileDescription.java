@@ -106,10 +106,18 @@ public class FileDescription {
 
     @Override
     public String toString() {
-        return "FileDescription{" +
+        return "File{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
-                ", size=" + size +
+                ", size=" + sizeDescription() +
                 '}';
+    }
+
+    private String sizeDescription() {
+        int unit = 1000;
+        if (size < unit) return size + " B";
+        int exp = (int) (Math.log(size) / Math.log(unit));
+        final char pre = "KMGTPE".charAt(exp - 1);
+        return String.format("%.1f %sB", size / Math.pow(unit, exp), pre);
     }
 }

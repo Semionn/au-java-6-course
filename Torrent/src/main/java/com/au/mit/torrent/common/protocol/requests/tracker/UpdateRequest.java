@@ -1,12 +1,12 @@
 package com.au.mit.torrent.common.protocol.requests.tracker;
 
+import com.au.mit.torrent.client.TorrentFile;
 import com.au.mit.torrent.common.AsyncWrapper;
 import com.au.mit.torrent.common.SmartBuffer;
 import com.au.mit.torrent.common.exceptions.AsyncReadRequestNotCompleteException;
 import com.au.mit.torrent.common.exceptions.AsyncWriteRequestNotCompleteException;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.protocol.ClientDescription;
-import com.au.mit.torrent.common.protocol.FileDescription;
 import com.au.mit.torrent.tracker.Tracker;
 
 import java.io.IOException;
@@ -78,14 +78,14 @@ public class UpdateRequest implements TrackerRequest {
      * Sends Update request to tracker
      * @param channel channel for communication with the tracker
      */
-    public static boolean send(SocketChannel channel, short localPort, Set<FileDescription> localFiles) {
+    public static boolean send(SocketChannel channel, short localPort, Set<TorrentFile> localFiles) {
         try {
             SmartBuffer buffer = new SmartBuffer(ByteBuffer.allocate(Integer.BYTES*4));
             buffer.putInt(TrackerRequestType.UPDATE.getNum());
             buffer.putShort(localPort);
             buffer.putInt(localFiles.size());
-            for (FileDescription file : localFiles) {
-                buffer.putInt(file.getId());
+            for (TorrentFile file : localFiles) {
+                buffer.putInt(file.getFileDescription().getId());
                 buffer.writeSync(channel);
             }
             buffer.writeSync(channel);

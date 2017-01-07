@@ -1,6 +1,8 @@
 package com.au.mit.torrent.client;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of PeerChoosingStrategy interface.
@@ -13,29 +15,33 @@ public class SimplePeerChoosingStrategy implements PeerChoosingStrategy {
         peerDescriptions.forEach(peer -> totalParts.addAll(peer.getPeerFileStat().getParts()));
         totalParts.removeAll(localParts);
 
-        final List<Set<PeerDescription>> partsPeers = new ArrayList<>(totalParts.size());
-        totalParts.forEach(part -> partsPeers.add(new HashSet<>()));
+        final List<List<DownloadingDescription>> partsPeers = new ArrayList<>(totalParts.size());
+        totalParts.forEach(part -> partsPeers.add(new ArrayList<>()));
 
         for (PeerDescription peer : peerDescriptions) {
             for (Integer part : peer.getPeerFileStat().getParts()) {
-                partsPeers.get(part).add(peer);
+                partsPeers.get(part).add(new DownloadingDescription(peer, part));
             }
         }
 
         partsPeers.sort((s1, s2) -> s1.size() == s2.size() ? 0 : (s1.size() < s2.size() ? 1 : -1));
 
-        final Set<DownloadingDescription> result = new HashSet<>();
+        class Counter {
+            private int chosenParts = 0;
 
-        for (int i = 0; i < partsPeers.size(); i++) {
-            final Iterator<PeerDescription> peerIterator = partsPeers.get(i).iterator();
-            if (!peerIterator.hasNext()) {
-                continue;
+            private void incParts() {
+                chosenParts++;
             }
-            PeerDescription firstPeer = peerIterator.next();
-            result.add(new DownloadingDescription(firstPeer, i));
-            for (int j = i; j < partsPeers.size(); j++) {
-                partsPeers.get(i).remove(firstPeer);
-            }
+        }
+        final Map<PeerDescription, Counter> priorities = peerDescriptions.stream().collect(Collectors.toMap(Function.identity(), pd -> new Counter()));
+
+        final Set<DownloadingDescription> result = new HashSet<>();
+        for (List<DownloadingDescription> partsPeer : partsPeers) {
+            DownloadingDescription downlDescr = partsPeer.stream().min((d1, d2) ->
+                    Comparator.<Integer>naturalOrder().compare(priorities.get(d1).chosenParts,
+                            priorities.get(d2).chosenParts)).get();
+            result.add(downlDescr);
+            priorities.get(downlDescr.getPeerDescription()).incParts();
         }
 
         return result;

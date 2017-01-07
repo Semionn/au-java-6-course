@@ -23,7 +23,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 
 /**
@@ -34,9 +33,10 @@ public class ClientImpl implements Client {
     private final static int RETRY_TIME_MS = 1000;
     private final static Logger logger = Logger.getLogger(ClientImpl.class.getName());
 
-    private final Set<FileDescription> localFiles;
+    private final Set<TorrentFile> localFiles = new HashSet<>();
     private final short localPort;
     private final PeerServer peerServer;
+    private DownloadingListener downloadingListener;
     private final Path torrentFolder;
     private Map<Integer, FileDescription> trackerFiles = new HashMap<>();
     private SimplePeerChoosingStrategy peerChoosingStrategy = new SimplePeerChoosingStrategy(); //DI for losers
@@ -46,22 +46,20 @@ public class ClientImpl implements Client {
     private boolean isConnected = false;
 
     public ClientImpl(short localPort, Path torrentsFolder) {
-        this(localPort, new HashSet<>(), torrentsFolder);
+        this(localPort, torrentsFolder, null);
     }
 
-    public ClientImpl(short localPort, Set<Path> filesPaths, Path torrentsFolder) {
+    public ClientImpl(short localPort, Path torrentsFolder, DownloadingListener downloadingListener) {
         this.localPort = localPort;
         this.torrentFolder = torrentsFolder;
-        localFiles = filesPaths.stream()
-                .map(path -> new FileDescription(path.getFileName().toString(), new File(path.toString()).length()))
-                .collect(Collectors.toSet());
+        this.downloadingListener = downloadingListener;
         peerServer = new PeerServer(localPort);
         final Thread peerServerThread = new Thread(peerServer::start);
         peerServerThread.setDaemon(true);
         peerServerThread.start();
     }
 
-    public Set<FileDescription> getLocalFiles() {
+    public Set<TorrentFile> getLocalFiles() {
         return localFiles;
     }
 
@@ -121,7 +119,10 @@ public class ClientImpl implements Client {
     }
 
     @Override
-    public void downloadFile(int fileID) {
+    public boolean downloadFile(int fileID) {
+        if (localFiles.stream().anyMatch(f -> f.getFileDescription().getId() == fileID)) {
+            return false;
+        }
         listRequest();
         if (trackerFiles.containsKey(fileID)) {
             final FileDescription fileDescription = trackerFiles.get(fileID);
@@ -136,23 +137,35 @@ public class ClientImpl implements Client {
             final Set<DownloadingDescription> downloadingDescriptions =
                     peerChoosingStrategy.getDownloadingDescription(new HashSet<>(), peerDescriptions);
 
+            final TorrentFile torrentFile = new TorrentFile(fileDescription, 0);
+            localFiles.add(torrentFile);
+
             new File(torrentFolder.toAbsolutePath().toString()).mkdirs();
-            for (DownloadingDescription downloadingDescr : downloadingDescriptions) {
-                try {
-                    final Path filePath = torrentFolder.resolve(fileDescription.getLocalPath());
-                    final RandomAccessFile file = new RandomAccessFile(new File(filePath.toAbsolutePath().toString()), "rw");
-                    Integer partNum = downloadingDescr.getPartNum();
-                    final byte[] part = getRequest(fileID, partNum, downloadingDescr.getPeerDescription().getPeerAddress());
-                    file.seek(PeerFileStat.getPartPosition(partNum));
-                    file.write(part, 0, PeerFileStat.calcPartSize(partNum, fileDescription.getSize()));
-                    file.close();
-                } catch (IOException e) {
-                    logger.log(Level.WARNING, "File writing failed", e);
+            new Thread(() -> {
+                for (DownloadingDescription downloadingDescr : downloadingDescriptions) {
+                    try {
+                        final Path filePath = torrentFolder.resolve(fileDescription.getLocalPath());
+                        final RandomAccessFile file = new RandomAccessFile(new File(filePath.toAbsolutePath().toString()), "rw");
+                        Integer partNum = downloadingDescr.getPartNum();
+                        final byte[] part = getRequest(fileID, partNum, downloadingDescr.getPeerDescription().getPeerAddress());
+                        file.seek(PeerFileStat.getPartPosition(partNum));
+                        file.write(part, 0, PeerFileStat.calcPartSize(partNum, fileDescription.getSize()));
+                        file.close();
+                        torrentFile.addPart();
+                        if (downloadingListener != null) {
+                            downloadingListener.update(fileDescription);
+                        }
+                    } catch (IOException e) {
+                        logger.log(Level.WARNING, "File writing failed", e);
+                    }
                 }
-            }
+            }).start();
             logger.info(String.format("File '%s' successfully downloaded", fileDescription.getName()));
+            return true;
         } else {
-            logger.warning(String.format("File with id '%s' not found", fileID));
+            final String message = String.format("File with id '%s' not found", fileID);
+            logger.warning(message);
+            throw new RequestException(message);
         }
     }
 
@@ -195,7 +208,7 @@ public class ClientImpl implements Client {
         Integer id = sendRequest(trackerHostname, trackerPort, channel -> UploadRequest.send(channel, fileName, fileSize));
         logger.info(String.format("File %s uploaded with id: %d", fileName, id));
         fileDescription.setId(id);
-        localFiles.add(fileDescription);
+        localFiles.add(new TorrentFile(fileDescription));
     }
 
     private <R> R sendRequest(String hostname, int port, Function<SocketChannel, R> request) {

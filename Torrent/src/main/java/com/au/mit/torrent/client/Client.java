@@ -39,7 +39,7 @@ public interface Client {
      * Downloads file from peers retrieved from the tracker
      * @param fileID file id at the tracker
      */
-    void downloadFile(int fileID);
+    boolean downloadFile(int fileID);
 
     /**
      * Performs Stat request to specified peer
