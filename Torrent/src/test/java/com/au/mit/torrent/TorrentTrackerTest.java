@@ -13,7 +13,9 @@ import com.au.mit.torrent.common.protocol.requests.client.StatRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.*;
 import com.au.mit.torrent.tracker.SingleThreadTracker;
 import com.au.mit.torrent.tracker.Tracker;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.invocation.InvocationOnMock;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -38,6 +40,10 @@ import static org.mockito.Mockito.*;
 
 @RunWith(PowerMockRunner.class)
 public class TorrentTrackerTest {
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
     @Test
     public void testCommunication() throws InterruptedException, IOException {
         final String hostname = "localhost";
@@ -45,14 +51,14 @@ public class TorrentTrackerTest {
 
         final int NUMBERS_COUNT = 10000;
 
-        final Path torrentsFolder = Paths.get("torrents_test");
-        new File(torrentsFolder.toAbsolutePath().toString()).deleteOnExit();
+        temporaryFolder.create();
+        final Path tempFolderPath = temporaryFolder.getRoot().toPath();
 
         Tracker tracker = new SingleThreadTracker(hostname, port);
         Thread trackerThread = new Thread(tracker::start);
         trackerThread.start();
 
-        File fileA = File.createTempFile("testA", ".txt");
+        File fileA = temporaryFolder.newFile("testA.txt");
         final FileWriter fileAWriter = new FileWriter(fileA);
         for (int i = 0; i < NUMBERS_COUNT; i++) {
             fileAWriter.write(" ");
@@ -61,7 +67,7 @@ public class TorrentTrackerTest {
         fileAWriter.close();
         fileA.deleteOnExit();
 
-        File fileB = File.createTempFile("testB", ".txt");
+        File fileB = temporaryFolder.newFile("testB.txt");
         final FileWriter fileBWriter = new FileWriter(fileB);
         for (int i = 0; i < NUMBERS_COUNT; i++) {
             fileBWriter.write(" ");
@@ -70,7 +76,7 @@ public class TorrentTrackerTest {
         fileBWriter.close();
         fileB.deleteOnExit();
 
-        final ClientImpl clientA = new ClientImpl((short) (port + 1), torrentsFolder);
+        final ClientImpl clientA = new ClientImpl((short) (port + 1), tempFolderPath);
         Thread clientAThread = new Thread(() -> {
             clientA.connect(hostname, port);
             clientA.uploadFile(fileA.getAbsolutePath());
@@ -79,7 +85,7 @@ public class TorrentTrackerTest {
         clientAThread.start();
         clientAThread.join();
 
-        final ClientImpl clientB = new ClientImpl((short) (port + 2), torrentsFolder);
+        final ClientImpl clientB = new ClientImpl((short) (port + 2), tempFolderPath);
         Thread clientBThread = new Thread(() -> {
             clientB.connect(hostname, port);
             clientB.uploadFile(fileB.getAbsolutePath());
@@ -88,11 +94,11 @@ public class TorrentTrackerTest {
         clientBThread.start();
         clientBThread.join();
 
-        final String downloadedFileAPath = torrentsFolder.resolve(fileA.getName()).toAbsolutePath().toString();
+        final String downloadedFileAPath = tempFolderPath.resolve(fileA.getName()).toAbsolutePath().toString();
         final File fileADownloaded = new File(downloadedFileAPath);
         fileADownloaded.deleteOnExit();
 
-        final String downloadedFileBPath = torrentsFolder.resolve(fileB.getName()).toAbsolutePath().toString();
+        final String downloadedFileBPath = tempFolderPath.resolve(fileB.getName()).toAbsolutePath().toString();
         final File fileBDownloaded = new File(downloadedFileBPath);
         fileBDownloaded.deleteOnExit();
 
