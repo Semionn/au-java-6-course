@@ -8,21 +8,6 @@
     <artifactId>Torrent</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-    <profiles>
-        <profile>
-            <id>tracker</id>
-            <properties>
-                <mainClass>com.au.mit.torrent.tracker.TorrentTrackerApp</mainClass>
-            </properties>
-        </profile>
-        <profile>
-            <id>client</id>
-            <properties>
-                <mainClass>com.au.mit.torrent.client.TrackerClientApp</mainClass>
-            </properties>
-        </profile>
-    </profiles>
-
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -60,16 +45,46 @@
             </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>${mainClass}</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                </configuration>
+                <executions>
+                    <execution>
+                        <id>build-server</id>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.au.mit.torrent.tracker.TorrentTrackerApp</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>TorrentServer</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>assembly</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>build-client</id>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.au.mit.torrent.client.TrackerClientApp</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>TorrentClientConsole</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>assembly</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
