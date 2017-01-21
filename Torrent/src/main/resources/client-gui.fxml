@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.TextField?>
+<AnchorPane xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.au.mit.torrent.client.gui.ClientGUIController">
+    <Label fx:id="textLog" layoutX="15.0" layoutY="280.0" prefHeight="29.0" prefWidth="400.0" text="Status: idle" AnchorPane.bottomAnchor="10.0" />
+    <TabPane prefHeight="350.0" prefWidth="352.0" tabClosingPolicy="UNAVAILABLE" accessibleHelp=""
+             AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+        <tabs>
+            <Tab text="Tracker torrents">
+                <content>
+                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="302.0" prefWidth="374.0">
+                        <Label layoutX="15.0" layoutY="10.0" prefHeight="29.0" prefWidth="65.0" text="trackerIP"/>
+                        <TextField fx:id="textFieldTrackerIP" layoutX="80.0" layoutY="10.0" prefHeight="29.0" prefWidth="130.0" text="localhost"/>
+                        <Button fx:id="buttonUpdate" layoutX="220" layoutY="10" text="Update list from server" onAction="#update" />
+                        <ListView fx:id="trackerList" layoutX="15.0" layoutY="45.0" prefHeight="200.0" prefWidth="323.0" onMouseClicked="#selectTrackerFile"
+                                  AnchorPane.bottomAnchor="80.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="45.0" />
+                        <Button fx:id="buttonDownload" layoutX="15" layoutY="250" text="Download selected" disable="true" AnchorPane.bottomAnchor="40.0" onAction="#download"/>
+                    </AnchorPane>
+                </content>
+            </Tab>
+            <Tab text="Active torrents">
+                <content>
+                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="302.0" prefWidth="374.0">
+                        <ListView fx:id="ownList" layoutX="15.0" layoutY="45.0" prefHeight="200.0" prefWidth="323.0" AnchorPane.bottomAnchor="80.0" AnchorPane.leftAnchor="15.0" AnchorPane.rightAnchor="15.0" AnchorPane.topAnchor="45.0" />
+                        <Button layoutX="15.0" layoutY="10.0" text="Publish file" onAction="#publish"/>
+
+                    </AnchorPane>
+                </content>
+            </Tab>
+        </tabs>
+    </TabPane>
+</AnchorPane>

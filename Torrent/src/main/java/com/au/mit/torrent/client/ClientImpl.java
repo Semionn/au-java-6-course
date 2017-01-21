@@ -19,7 +19,10 @@ import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,7 +39,7 @@ public class ClientImpl implements Client {
     private final Set<TorrentFile> localFiles = new HashSet<>();
     private final short localPort;
     private final PeerServer peerServer;
-    private DownloadingListener downloadingListener;
+    private final DownloadingListener downloadingListener;
     private final Path torrentFolder;
     private Map<Integer, FileDescription> trackerFiles = new HashMap<>();
     private SimplePeerChoosingStrategy peerChoosingStrategy = new SimplePeerChoosingStrategy(); //DI for losers
@@ -152,15 +155,17 @@ public class ClientImpl implements Client {
                         file.write(part, 0, PeerFileStat.calcPartSize(partNum, fileDescription.getSize()));
                         file.close();
                         torrentFile.addPart();
+                        if (torrentFile.getRatio() == 1.0) {
+                            logger.info(String.format("File '%s' successfully downloaded", fileDescription.getName()));
+                        }
                         if (downloadingListener != null) {
-                            downloadingListener.update(fileDescription);
+                            downloadingListener.update(torrentFile);
                         }
                     } catch (IOException e) {
                         logger.log(Level.WARNING, "File writing failed", e);
                     }
                 }
             }).start();
-            logger.info(String.format("File '%s' successfully downloaded", fileDescription.getName()));
             return true;
         } else {
             final String message = String.format("File with id '%s' not found", fileID);
