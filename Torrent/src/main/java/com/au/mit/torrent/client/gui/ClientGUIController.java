@@ -10,6 +10,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Pane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -28,6 +29,9 @@ public class ClientGUIController {
     private static final Path torrentsFolder = Paths.get("torrents");
     private static final short PORT = (short)(8082+new Random().nextInt(100));
     private static final short TRACKER_PORT = 8081;
+
+    private final String progressBarStylesheet = getClass().getClassLoader().
+            getResource("progress_bar.css").toExternalForm();
 
     public Label textLog;
     public Button buttonDownload;
@@ -58,6 +62,7 @@ public class ClientGUIController {
         final List<TorrentFile> localFilesInfo = client.getLocalFiles().stream().collect(Collectors.toList());
         ObservableList<TorrentFile> localItems = FXCollections.observableArrayList(localFilesInfo);
         ownList.setItems(localItems);
+        ownList.setCellFactory(ProgressBarListCell::new);
     }
 
     public void update(ActionEvent actionEvent) {
@@ -89,6 +94,7 @@ public class ClientGUIController {
         final List<TorrentFile> localFilesInfo = client.getLocalFiles().stream().collect(Collectors.toList());
         ObservableList<TorrentFile> items = FXCollections.observableArrayList(localFilesInfo);
         ownList.setItems(items);
+        ownList.setCellFactory(ProgressBarListCell::new);
     }
 
     void setStage(Stage stage) {
@@ -142,5 +148,31 @@ public class ClientGUIController {
         alert.setTitle("Warning!");
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    class ProgressBarListCell extends ListCell<TorrentFile> {
+        private ProgressBar bar = new ProgressBar();
+        private Label label = new Label();
+        private Pane pane = new Pane();
+
+        ProgressBarListCell(ListView<TorrentFile> listView) {
+            pane.getStylesheets().add(progressBarStylesheet);
+            bar.prefWidthProperty().bind(listView.widthProperty().subtract(15));
+            bar.setMaxWidth(Control.USE_PREF_SIZE);
+            bar.getStyleClass().add("green-bar");
+            pane.getChildren().add(bar);
+            label.setLayoutX(5);
+            pane.getChildren().add(label);
+        }
+
+        @Override
+        public void updateItem(TorrentFile item, boolean empty) {
+            super.updateItem(item, empty);
+            if (item != null) {
+                label.setText(item.toString());
+                bar.setProgress(item.getRatio());
+                setGraphic(pane);
+            }
+        }
     }
 }
