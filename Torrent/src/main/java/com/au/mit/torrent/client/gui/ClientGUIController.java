@@ -8,6 +8,7 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
@@ -46,6 +47,11 @@ public class ClientGUIController {
     public ClientGUIController() throws IOException {
     }
 
+    @FXML
+    public void initialize() {
+        updateLocalFilesView();
+    }
+
     public void publish(ActionEvent actionEvent) {
         if (!client.isConnected()) {
             showWarning("No connection established");
@@ -59,10 +65,7 @@ public class ClientGUIController {
 
         client.uploadFile(file.getPath());
 
-        final List<TorrentFile> localFilesInfo = client.getLocalFiles().stream().collect(Collectors.toList());
-        ObservableList<TorrentFile> localItems = FXCollections.observableArrayList(localFilesInfo);
-        ownList.setItems(localItems);
-        ownList.setCellFactory(ProgressBarListCell::new);
+        updateLocalFilesView();
     }
 
     public void update(ActionEvent actionEvent) {
@@ -91,10 +94,11 @@ public class ClientGUIController {
             showWarning("Local files couldn't be downloaded");
         }
 
-        final List<TorrentFile> localFilesInfo = client.getLocalFiles().stream().collect(Collectors.toList());
-        ObservableList<TorrentFile> items = FXCollections.observableArrayList(localFilesInfo);
-        ownList.setItems(items);
-        ownList.setCellFactory(ProgressBarListCell::new);
+        updateLocalFilesView();
+    }
+
+    void storeClientMetadata() {
+        client.storeMetadata(torrentsFolder);
     }
 
     void setStage(Stage stage) {
@@ -103,6 +107,13 @@ public class ClientGUIController {
 
     public void selectTrackerFile(MouseEvent mouseEvent) {
         buttonDownload.setDisable(false);
+    }
+
+    private void updateLocalFilesView() {
+        final List<TorrentFile> localFilesInfo = client.getLocalFiles().stream().collect(Collectors.toList());
+        ObservableList<TorrentFile> localItems = FXCollections.observableArrayList(localFilesInfo);
+        ownList.setItems(localItems);
+        ownList.setCellFactory(ProgressBarListCell::new);
     }
 
     private void updateDownloading(TorrentFile torrentFile) {

@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class FileDescription {
+public class FileDescription implements java.io.Serializable {
     private int id;
     private String name;
     private long size;

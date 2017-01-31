@@ -4,6 +4,8 @@ import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.PeerFileStat;
 import com.au.mit.torrent.common.protocol.FileDescription;
 
+import java.nio.file.Path;
+
 /**
  * Interface for torrent client.
  * Allows to perform requests: list, stat, upload, get and mixed query - download file.
@@ -62,4 +64,16 @@ public interface Client {
      * Returns true if the client is connected to the tracker, false otherwise
      */
     boolean isConnected();
+
+    /**
+     * Stores information about downloaded and uploaded files
+     * @param path to save metadata
+     */
+    void storeMetadata(Path path);
+
+    /**
+     * Loads information about downloaded and uploaded files
+     * @param path to load metadata
+     */
+    void loadMetadata(Path path);
 }

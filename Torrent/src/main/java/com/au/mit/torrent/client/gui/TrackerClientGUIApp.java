@@ -8,12 +8,13 @@ import javafx.stage.Stage;
 
 
 public class TrackerClientGUIApp extends Application {
+    private ClientGUIController controller;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getClassLoader().getResource("client-gui.fxml"));
         Parent root = loader.load();
-        ClientGUIController controller = loader.getController();
+        controller = loader.getController();
         controller.setStage(primaryStage);
 
         primaryStage.setTitle("Benchmark client");
@@ -25,4 +26,10 @@ public class TrackerClientGUIApp extends Application {
         launch(args);
     }
 
+    @Override
+    public void stop(){
+        if (controller != null) {
+            controller.storeClientMetadata();
+        }
+    }
 }

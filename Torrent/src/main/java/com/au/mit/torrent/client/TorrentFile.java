@@ -6,7 +6,7 @@ import com.au.mit.torrent.common.protocol.FileDescription;
 /**
  * Wrapper for FileDescription file, which tracks downloading process of it
  */
-public class TorrentFile {
+public class TorrentFile implements java.io.Serializable  {
     private final FileDescription fileDescription;
     private final int totalPartsCount;
     private int downloadedPartsCount;

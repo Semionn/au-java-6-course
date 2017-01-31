@@ -2,6 +2,7 @@ package com.au.mit.torrent.client;
 
 import com.au.mit.torrent.common.ClientAddress;
 import com.au.mit.torrent.common.PeerFileStat;
+import com.au.mit.torrent.common.exceptions.ClientMetadataSerializationException;
 import com.au.mit.torrent.common.exceptions.CommunicationException;
 import com.au.mit.torrent.common.exceptions.DisconnectException;
 import com.au.mit.torrent.common.exceptions.RequestException;
@@ -13,11 +14,10 @@ import com.au.mit.torrent.common.protocol.requests.tracker.SourceRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.UpdateRequest;
 import com.au.mit.torrent.common.protocol.requests.tracker.UploadRequest;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,11 +36,11 @@ public class ClientImpl implements Client {
     private final static int RETRY_TIME_MS = 1000;
     private final static Logger logger = Logger.getLogger(ClientImpl.class.getName());
 
-    private final Set<TorrentFile> localFiles = new HashSet<>();
     private final short localPort;
     private final PeerServer peerServer;
     private final DownloadingListener downloadingListener;
     private final Path torrentFolder;
+    private Set<TorrentFile> localFiles = new HashSet<>();
     private Map<Integer, FileDescription> trackerFiles = new HashMap<>();
     private SimplePeerChoosingStrategy peerChoosingStrategy = new SimplePeerChoosingStrategy(); //DI for losers
     private String trackerHostname = null;
@@ -53,6 +53,7 @@ public class ClientImpl implements Client {
     }
 
     public ClientImpl(short localPort, Path torrentsFolder, DownloadingListener downloadingListener) {
+        loadMetadata(torrentsFolder);
         this.localPort = localPort;
         this.torrentFolder = torrentsFolder;
         this.downloadingListener = downloadingListener;
@@ -189,6 +190,43 @@ public class ClientImpl implements Client {
     @Override
     public boolean isConnected() {
         return isConnected;
+    }
+
+    @Override
+    public void storeMetadata(Path path) {
+        try {
+            new File(path.toString()).mkdir();
+            FileOutputStream fileOut =
+                    new FileOutputStream(getMetaInfoPath(path).toString());
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(localFiles);
+            out.close();
+            fileOut.close();
+        } catch (IOException e) {
+            throw new ClientMetadataSerializationException(e);
+        }
+    }
+
+    @Override
+    public void loadMetadata(Path path) {
+        if (!Files.exists(getMetaInfoPath(path))) {
+            logger.log(Level.WARNING, String.format("Metadata file wasn't found: %s", getMetaInfoPath(path)));
+            return;
+        }
+        try {
+            FileInputStream fileIn = new FileInputStream(getMetaInfoPath(path).toString());
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            localFiles = (Set<TorrentFile>) in.readObject();
+            in.close();
+            fileIn.close();
+        } catch (IOException | ClassNotFoundException e) {
+            logger.log(Level.WARNING, "Metadata loading failed, use default instead", e);
+            localFiles = new HashSet<>();
+        }
+    }
+
+    private static Path getMetaInfoPath(Path storagePath) {
+        return storagePath.resolve("meta");
     }
 
     private void checkConnection() {
